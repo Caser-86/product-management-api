@@ -9,6 +9,7 @@ import com.example.ecommerce.product.api.ProductUpdateRequest;
 import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
+import com.example.ecommerce.search.application.ProductSearchProjector;
 import com.example.ecommerce.shared.api.BusinessException;
 import com.example.ecommerce.shared.api.ErrorCode;
 import com.example.ecommerce.shared.auth.AuthContext;
@@ -26,10 +27,16 @@ public class ProductCommandService {
 
     private final ProductSpuRepository spuRepository;
     private final InventoryBalanceRepository inventoryBalanceRepository;
+    private final ProductSearchProjector productSearchProjector;
 
-    public ProductCommandService(ProductSpuRepository spuRepository, InventoryBalanceRepository inventoryBalanceRepository) {
+    public ProductCommandService(
+        ProductSpuRepository spuRepository,
+        InventoryBalanceRepository inventoryBalanceRepository,
+        ProductSearchProjector productSearchProjector
+    ) {
         this.spuRepository = spuRepository;
         this.inventoryBalanceRepository = inventoryBalanceRepository;
+        this.productSearchProjector = productSearchProjector;
     }
 
     @Transactional
@@ -55,6 +62,7 @@ public class ProductCommandService {
             }
             inventoryBalanceRepository.save(InventoryBalanceEntity.initial(sku.getId(), sku.getMerchantId(), initialStock));
         }
+        productSearchProjector.refresh(saved.getId());
         return new ProductResponse(saved.getId(), saved.getTitle(), saved.getMerchantId(), saved.getCategoryId());
     }
 
@@ -78,6 +86,7 @@ public class ProductCommandService {
         }
         assertMerchantScope(spu.getMerchantId());
         spu.updateBasics(request.title(), request.categoryId());
+        productSearchProjector.refresh(spu.getId());
         return new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId());
     }
 
@@ -87,6 +96,7 @@ public class ProductCommandService {
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found"));
         assertMerchantScope(spu.getMerchantId());
         spu.archive();
+        productSearchProjector.refresh(spu.getId());
     }
 
     @Transactional(readOnly = true)

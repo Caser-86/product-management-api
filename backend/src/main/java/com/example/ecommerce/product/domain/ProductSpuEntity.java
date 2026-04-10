@@ -94,6 +94,18 @@ public class ProductSpuEntity {
         return categoryId;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public String getPublishStatus() {
+        return publishStatus;
+    }
+
+    public String getAuditStatus() {
+        return auditStatus;
+    }
+
     public List<ProductSkuEntity> getSkus() {
         return skus;
     }

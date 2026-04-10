@@ -6,6 +6,8 @@ import com.example.ecommerce.inventory.domain.InventoryLedgerRepository;
 import com.example.ecommerce.inventory.domain.InventoryReservationEntity;
 import com.example.ecommerce.inventory.domain.InventoryReservationRepository;
 import com.example.ecommerce.inventory.api.InventoryReservationRequest;
+import com.example.ecommerce.product.domain.ProductSkuRepository;
+import com.example.ecommerce.search.application.ProductSearchProjector;
 import com.example.ecommerce.shared.api.BusinessException;
 import com.example.ecommerce.shared.api.ErrorCode;
 import com.example.ecommerce.shared.auth.AuthContext;
@@ -22,15 +24,21 @@ public class InventoryService {
     private final InventoryBalanceRepository inventoryBalanceRepository;
     private final InventoryLedgerRepository inventoryLedgerRepository;
     private final InventoryReservationRepository inventoryReservationRepository;
+    private final ProductSkuRepository productSkuRepository;
+    private final ProductSearchProjector productSearchProjector;
 
     public InventoryService(
         InventoryBalanceRepository inventoryBalanceRepository,
         InventoryLedgerRepository inventoryLedgerRepository,
-        InventoryReservationRepository inventoryReservationRepository
+        InventoryReservationRepository inventoryReservationRepository,
+        ProductSkuRepository productSkuRepository,
+        ProductSearchProjector productSearchProjector
     ) {
         this.inventoryBalanceRepository = inventoryBalanceRepository;
         this.inventoryLedgerRepository = inventoryLedgerRepository;
         this.inventoryReservationRepository = inventoryReservationRepository;
+        this.productSkuRepository = productSkuRepository;
+        this.productSearchProjector = productSearchProjector;
     }
 
     @Transactional
@@ -63,6 +71,7 @@ public class InventoryService {
         inventoryLedgerRepository.save(
             InventoryLedgerEntity.of(item.skuId(), balance.getMerchantId(), "reserve", bizId, -item.quantity(), item.quantity())
         );
+        refreshProjectionBySku(item.skuId());
         return reservationId;
     }
 
@@ -91,6 +100,7 @@ public class InventoryService {
                 -reservation.getQuantity()
             )
         );
+        refreshProjectionBySku(reservation.getSkuId());
     }
 
     @Transactional(readOnly = true)
@@ -116,6 +126,7 @@ public class InventoryService {
         inventoryLedgerRepository.save(
             InventoryLedgerEntity.of(skuId, balance.getMerchantId(), "adjust", reason == null ? "manual-adjust" : reason, delta, 0)
         );
+        refreshProjectionBySku(skuId);
         return Map.of(
             "skuId", skuId,
             "totalQty", balance.getTotalQty(),
@@ -149,5 +160,13 @@ public class InventoryService {
         if (!auth.isPlatformAdmin() && !auth.merchantId().equals(resourceMerchantId)) {
             throw new BusinessException(ErrorCode.AUTH_MERCHANT_SCOPE_DENIED, "merchant scope denied");
         }
+    }
+
+    private void refreshProjectionBySku(Long skuId) {
+        Long productId = productSkuRepository.findById(skuId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "sku not found"))
+            .getSpu()
+            .getId();
+        productSearchProjector.refresh(productId);
     }
 }

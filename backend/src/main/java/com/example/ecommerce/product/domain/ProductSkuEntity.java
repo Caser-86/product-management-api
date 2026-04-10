@@ -69,4 +69,8 @@ public class ProductSkuEntity {
     public String getSkuCode() {
         return skuCode;
     }
+
+    public ProductSpuEntity getSpu() {
+        return spu;
+    }
 }

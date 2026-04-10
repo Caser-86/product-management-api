@@ -85,6 +85,13 @@ Anonymous access remains available for storefront read endpoints such as
 Due price schedules are applied automatically by the in-process scheduler.
 Manual application is still available through the admin API.
 
+## Storefront Search
+
+`GET /products` reads from the `storefront_product_search` projection table.
+The projection is refreshed synchronously after product, inventory, and pricing
+writes so storefront search no longer assembles product, price, and stock data
+at request time.
+
 ## API Documentation
 
 After the application starts, interactive API docs are available at:
