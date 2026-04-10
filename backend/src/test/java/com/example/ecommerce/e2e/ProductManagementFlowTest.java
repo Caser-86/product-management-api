@@ -115,6 +115,8 @@ class ProductManagementFlowTest {
 
         mockMvc.perform(get("/products").param("keyword", "flow"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.items[0].title").exists());
+            .andExpect(jsonPath("$.data.items[0].title").value("flow-hoodie"))
+            .andExpect(jsonPath("$.data.items[0].minPrice").value(149.0))
+            .andExpect(jsonPath("$.data.items[0].stockStatus").value("in_stock"));
     }
 }

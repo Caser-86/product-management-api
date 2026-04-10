@@ -9,6 +9,7 @@ import com.example.ecommerce.pricing.domain.PriceHistoryRepository;
 import com.example.ecommerce.pricing.domain.PriceScheduleEntity;
 import com.example.ecommerce.pricing.domain.PriceScheduleRepository;
 import com.example.ecommerce.product.domain.ProductSkuRepository;
+import com.example.ecommerce.search.application.ProductSearchProjector;
 import com.example.ecommerce.shared.api.BusinessException;
 import com.example.ecommerce.shared.api.ErrorCode;
 import com.example.ecommerce.shared.auth.AuthContext;
@@ -32,6 +33,7 @@ public class PricingService {
     private final PriceHistoryRepository priceHistoryRepository;
     private final PriceScheduleRepository priceScheduleRepository;
     private final ProductSkuRepository productSkuRepository;
+    private final ProductSearchProjector productSearchProjector;
     private final ObjectMapper objectMapper;
 
     public PricingService(
@@ -39,12 +41,14 @@ public class PricingService {
         PriceHistoryRepository priceHistoryRepository,
         PriceScheduleRepository priceScheduleRepository,
         ProductSkuRepository productSkuRepository,
+        ProductSearchProjector productSearchProjector,
         ObjectMapper objectMapper
     ) {
         this.priceCurrentRepository = priceCurrentRepository;
         this.priceHistoryRepository = priceHistoryRepository;
         this.priceScheduleRepository = priceScheduleRepository;
         this.productSkuRepository = productSkuRepository;
+        this.productSearchProjector = productSearchProjector;
         this.objectMapper = objectMapper;
     }
 
@@ -174,6 +178,7 @@ public class PricingService {
                 operatorId
             );
         priceHistoryRepository.save(history);
+        refreshProjectionBySku(skuId);
     }
 
     private void validatePrice(BigDecimal listPrice, BigDecimal salePrice) {
@@ -225,5 +230,13 @@ public class PricingService {
         if (!auth.isPlatformAdmin() && !auth.merchantId().equals(merchantId)) {
             throw new BusinessException(ErrorCode.AUTH_MERCHANT_SCOPE_DENIED, "merchant scope denied");
         }
+    }
+
+    private void refreshProjectionBySku(Long skuId) {
+        Long productId = productSkuRepository.findById(skuId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "sku not found"))
+            .getSpu()
+            .getId();
+        productSearchProjector.refresh(productId);
     }
 }
