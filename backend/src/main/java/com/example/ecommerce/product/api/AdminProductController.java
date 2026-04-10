@@ -61,7 +61,7 @@ public class AdminProductController {
     @Operation(summary = "List products", description = "Lists products for a merchant with pagination.")
     public ApiResponse<ProductListResponse> list(
         @Parameter(description = "Merchant ID", example = "2001")
-        @RequestParam Long merchantId,
+        @RequestParam(required = false) Long merchantId,
         @Parameter(description = "Page number, starting from 1", example = "1")
         @RequestParam(defaultValue = "1") int page,
         @Parameter(description = "Page size", example = "20")

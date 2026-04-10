@@ -1,11 +1,15 @@
 package com.example.ecommerce.inventory.application;
 
 import com.example.ecommerce.inventory.domain.InventoryBalanceRepository;
+import com.example.ecommerce.inventory.domain.InventoryLedgerEntity;
+import com.example.ecommerce.inventory.domain.InventoryLedgerRepository;
 import com.example.ecommerce.inventory.domain.InventoryReservationEntity;
 import com.example.ecommerce.inventory.domain.InventoryReservationRepository;
 import com.example.ecommerce.inventory.api.InventoryReservationRequest;
 import com.example.ecommerce.shared.api.BusinessException;
 import com.example.ecommerce.shared.api.ErrorCode;
+import com.example.ecommerce.shared.auth.AuthContext;
+import com.example.ecommerce.shared.auth.AuthContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,13 +20,16 @@ import java.util.Map;
 public class InventoryService {
 
     private final InventoryBalanceRepository inventoryBalanceRepository;
+    private final InventoryLedgerRepository inventoryLedgerRepository;
     private final InventoryReservationRepository inventoryReservationRepository;
 
     public InventoryService(
         InventoryBalanceRepository inventoryBalanceRepository,
+        InventoryLedgerRepository inventoryLedgerRepository,
         InventoryReservationRepository inventoryReservationRepository
     ) {
         this.inventoryBalanceRepository = inventoryBalanceRepository;
+        this.inventoryLedgerRepository = inventoryLedgerRepository;
         this.inventoryReservationRepository = inventoryReservationRepository;
     }
 
@@ -50,8 +57,12 @@ public class InventoryService {
         InventoryReservationRequest.Item item = items.get(0);
         var balance = inventoryBalanceRepository.findById(item.skuId())
             .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        assertMerchantScope(balance.getMerchantId());
         balance.reserve(item.quantity());
         inventoryReservationRepository.save(InventoryReservationEntity.reserved(reservationId, bizId, item.skuId(), item.quantity()));
+        inventoryLedgerRepository.save(
+            InventoryLedgerEntity.of(item.skuId(), balance.getMerchantId(), "reserve", bizId, -item.quantity(), item.quantity())
+        );
         return reservationId;
     }
 
@@ -67,14 +78,26 @@ public class InventoryService {
         }
         var balance = inventoryBalanceRepository.findById(reservation.getSkuId())
             .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        assertMerchantScope(balance.getMerchantId());
         balance.confirm(reservation.getQuantity());
         reservation.confirm();
+        inventoryLedgerRepository.save(
+            InventoryLedgerEntity.of(
+                reservation.getSkuId(),
+                balance.getMerchantId(),
+                "confirm",
+                bizId,
+                0,
+                -reservation.getQuantity()
+            )
+        );
     }
 
     @Transactional(readOnly = true)
     public Map<String, Object> snapshot(Long skuId) {
         var balance = inventoryBalanceRepository.findById(skuId)
             .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        assertMerchantScope(balance.getMerchantId());
         return Map.of(
             "skuId", skuId,
             "totalQty", balance.getTotalQty(),
@@ -88,7 +111,11 @@ public class InventoryService {
     public Map<String, Object> adjust(Long skuId, int delta, String reason, Long operatorId) {
         var balance = inventoryBalanceRepository.findById(skuId)
             .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        assertMerchantScope(balance.getMerchantId());
         balance.adjust(delta);
+        inventoryLedgerRepository.save(
+            InventoryLedgerEntity.of(skuId, balance.getMerchantId(), "adjust", reason == null ? "manual-adjust" : reason, delta, 0)
+        );
         return Map.of(
             "skuId", skuId,
             "totalQty", balance.getTotalQty(),
@@ -98,5 +125,29 @@ public class InventoryService {
             "reason", reason == null ? "" : reason,
             "operatorId", operatorId == null ? 0L : operatorId
         );
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> history(Long skuId) {
+        var balance = inventoryBalanceRepository.findById(skuId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        assertMerchantScope(balance.getMerchantId());
+        List<Map<String, Object>> items = inventoryLedgerRepository.findBySkuIdOrderByIdDesc(skuId).stream()
+            .map(ledger -> Map.<String, Object>of(
+                "bizType", ledger.getBizType(),
+                "bizId", ledger.getBizId(),
+                "deltaAvailable", ledger.getDeltaAvailable(),
+                "deltaReserved", ledger.getDeltaReserved(),
+                "createdAt", ledger.getCreatedAt() == null ? "" : ledger.getCreatedAt().toString()
+            ))
+            .toList();
+        return Map.of("items", items);
+    }
+
+    private void assertMerchantScope(Long resourceMerchantId) {
+        AuthContext auth = AuthContextHolder.getRequired();
+        if (!auth.isPlatformAdmin() && !auth.merchantId().equals(resourceMerchantId)) {
+            throw new BusinessException(ErrorCode.AUTH_MERCHANT_SCOPE_DENIED, "merchant scope denied");
+        }
     }
 }

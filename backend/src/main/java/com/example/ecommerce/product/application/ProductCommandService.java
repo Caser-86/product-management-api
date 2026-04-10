@@ -11,6 +11,8 @@ import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.shared.api.BusinessException;
 import com.example.ecommerce.shared.api.ErrorCode;
+import com.example.ecommerce.shared.auth.AuthContext;
+import com.example.ecommerce.shared.auth.AuthContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +35,15 @@ public class ProductCommandService {
     @Transactional
     public ProductResponse create(ProductCreateRequest request) {
         ProductValidation.validateUniqueSpecHashes(request);
+        Long merchantId = effectiveMerchantId(request.merchantId(), true);
         ProductSpuEntity spu = ProductSpuEntity.draft(
-            request.merchantId(),
+            merchantId,
             "SPU-" + UUID.randomUUID().toString().substring(0, 8),
             request.title(),
             request.categoryId()
         );
         request.skus().forEach(sku ->
-            spu.addSku(ProductSkuEntity.of(request.merchantId(), sku.skuCode(), sku.specSnapshot(), sku.specHash()))
+            spu.addSku(ProductSkuEntity.of(merchantId, sku.skuCode(), sku.specSnapshot(), sku.specHash()))
         );
         ProductSpuEntity saved = spuRepository.save(spu);
         Map<String, Integer> initialStockBySkuCode = request.skus().stream()
@@ -62,6 +65,7 @@ public class ProductCommandService {
         if (spu.isDeleted()) {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found");
         }
+        assertMerchantScope(spu.getMerchantId());
         return new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId());
     }
 
@@ -72,6 +76,7 @@ public class ProductCommandService {
         if (spu.isDeleted()) {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found");
         }
+        assertMerchantScope(spu.getMerchantId());
         spu.updateBasics(request.title(), request.categoryId());
         return new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId());
     }
@@ -80,6 +85,7 @@ public class ProductCommandService {
     public void delete(Long productId) {
         ProductSpuEntity spu = spuRepository.findWithSkusById(productId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found"));
+        assertMerchantScope(spu.getMerchantId());
         spu.archive();
     }
 
@@ -87,14 +93,32 @@ public class ProductCommandService {
     public ProductListResponse list(Long merchantId, int page, int pageSize) {
         int safePage = Math.max(page, 1);
         int safePageSize = Math.max(pageSize, 1);
-        var pageResult = spuRepository.findByMerchantIdAndStatusNot(
-            merchantId,
-            "deleted",
-            org.springframework.data.domain.PageRequest.of(safePage - 1, safePageSize)
-        );
+        Long effectiveMerchantId = effectiveMerchantId(merchantId, false);
+        var pageable = org.springframework.data.domain.PageRequest.of(safePage - 1, safePageSize);
+        var pageResult = effectiveMerchantId == null
+            ? spuRepository.findByStatusNot("deleted", pageable)
+            : spuRepository.findByMerchantIdAndStatusNot(effectiveMerchantId, "deleted", pageable);
         var items = pageResult.getContent().stream()
             .map(spu -> new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId()))
             .toList();
         return new ProductListResponse(items, safePage, safePageSize, pageResult.getTotalElements());
+    }
+
+    private Long effectiveMerchantId(Long requestedMerchantId, boolean required) {
+        AuthContext auth = AuthContextHolder.getRequired();
+        if (!auth.isPlatformAdmin()) {
+            return auth.merchantId();
+        }
+        if (required && requestedMerchantId == null) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "merchantId is required");
+        }
+        return requestedMerchantId;
+    }
+
+    private void assertMerchantScope(Long resourceMerchantId) {
+        AuthContext auth = AuthContextHolder.getRequired();
+        if (!auth.isPlatformAdmin() && !auth.merchantId().equals(resourceMerchantId)) {
+            throw new BusinessException(ErrorCode.AUTH_MERCHANT_SCOPE_DENIED, "merchant scope denied");
+        }
     }
 }

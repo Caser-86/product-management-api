@@ -28,6 +28,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 class PricingControllerTest {
 
+    private static final String USER_ID_HEADER = "X-User-Id";
+    private static final String ROLE_HEADER = "X-Role";
+    private static final String MERCHANT_ID_HEADER = "X-Merchant-Id";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -63,6 +67,9 @@ class PricingControllerTest {
     @Test
     void updates_price_and_records_history() throws Exception {
         mockMvc.perform(patch("/admin/skus/{skuId}/prices", skuId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -74,7 +81,10 @@ class PricingControllerTest {
                     """))
             .andExpect(status().isOk());
 
-        mockMvc.perform(get("/admin/skus/{skuId}/price-history", skuId))
+        mockMvc.perform(get("/admin/skus/{skuId}/price-history", skuId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items[0].reason").value("weekend campaign"))
             .andExpect(jsonPath("$.data.items[0].newPrice").value("{\"listPrice\":189.00,\"salePrice\":149.00}"));
@@ -83,6 +93,9 @@ class PricingControllerTest {
     @Test
     void creates_and_applies_scheduled_price() throws Exception {
         MvcResult createScheduleResult = mockMvc.perform(post("/admin/skus/{skuId}/price-schedules", skuId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -102,13 +115,42 @@ class PricingControllerTest {
             .path("scheduleId")
             .asLong();
 
-        mockMvc.perform(post("/admin/price-schedules/{scheduleId}/apply", scheduleId))
+        mockMvc.perform(post("/admin/price-schedules/{scheduleId}/apply", scheduleId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("SUCCESS"));
 
-        mockMvc.perform(get("/admin/skus/{skuId}/price-history", skuId))
+        mockMvc.perform(get("/admin/skus/{skuId}/price-history", skuId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items[0].changeType").value("scheduled"))
             .andExpect(jsonPath("$.data.items[0].reason").value("scheduled release"));
+    }
+
+    @Test
+    void merchant_admin_cannot_update_price_for_other_merchant_sku() throws Exception {
+        ProductSpuEntity foreignSpu = ProductSpuEntity.draft(4001L, "SPU-PRC-2", "pricing-foreign", 44L);
+        foreignSpu.addSku(ProductSkuEntity.of(4001L, "SKU-PRC-2", "{\"color\":\"white\"}", "pricing-hash-2"));
+        Long foreignSkuId = productSpuRepository.save(foreignSpu).getSkus().get(0).getId();
+
+        mockMvc.perform(patch("/admin/skus/{skuId}/prices", foreignSkuId)
+                .header(USER_ID_HEADER, "9002")
+                .header(ROLE_HEADER, "MERCHANT_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "listPrice": 189.00,
+                      "salePrice": 149.00,
+                      "reason": "weekend campaign",
+                      "operatorId": 501
+                    }
+                    """))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("AUTH_MERCHANT_SCOPE_DENIED"));
     }
 }

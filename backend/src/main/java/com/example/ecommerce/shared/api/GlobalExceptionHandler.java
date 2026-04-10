@@ -14,8 +14,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
-        return ResponseEntity.badRequest()
-            .body(new ApiResponse<>(false, ex.getErrorCode().name(), ex.getMessage(), null));
+        HttpStatus status = switch (ex.getErrorCode()) {
+            case AUTH_UNAUTHENTICATED, AUTH_INVALID_ROLE -> HttpStatus.UNAUTHORIZED;
+            case AUTH_MERCHANT_SCOPE_DENIED -> HttpStatus.FORBIDDEN;
+            case COMMON_VERSION_CONFLICT, INVENTORY_VERSION_CONFLICT, PRICE_SCHEDULE_CONFLICT -> HttpStatus.CONFLICT;
+            case PRODUCT_NOT_FOUND -> HttpStatus.NOT_FOUND;
+            default -> HttpStatus.BAD_REQUEST;
+        };
+        return ResponseEntity.status(status)
+            .body(ApiResponse.failure(ex.getErrorCode().name(), ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
