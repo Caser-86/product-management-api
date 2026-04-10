@@ -33,7 +33,7 @@ public class InventoryBalanceEntity {
 
     @Version
     @Column(nullable = false)
-    private long version;
+    private Long version;
 
     protected InventoryBalanceEntity() {
     }
@@ -51,6 +51,14 @@ public class InventoryBalanceEntity {
 
     public int getAvailableQty() {
         return availableQty;
+    }
+
+    public int getTotalQty() {
+        return totalQty;
+    }
+
+    public int getReservedQty() {
+        return reservedQty;
     }
 
     public int getSoldQty() {
@@ -77,5 +85,19 @@ public class InventoryBalanceEntity {
         }
         this.reservedQty -= quantity;
         this.soldQty += quantity;
+    }
+
+    public void adjust(int delta) {
+        if (delta == 0) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "adjustment delta must not be zero");
+        }
+        if (totalQty + delta < soldQty + reservedQty) {
+            throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT, "inventory adjustment exceeds available stock");
+        }
+        if (availableQty + delta < 0) {
+            throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT, "inventory adjustment exceeds available stock");
+        }
+        this.totalQty += delta;
+        this.availableQty += delta;
     }
 }

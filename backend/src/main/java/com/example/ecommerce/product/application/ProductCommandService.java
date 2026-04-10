@@ -5,6 +5,7 @@ import com.example.ecommerce.inventory.domain.InventoryBalanceRepository;
 import com.example.ecommerce.product.api.ProductCreateRequest;
 import com.example.ecommerce.product.api.ProductListResponse;
 import com.example.ecommerce.product.api.ProductResponse;
+import com.example.ecommerce.product.api.ProductUpdateRequest;
 import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
@@ -58,14 +59,39 @@ public class ProductCommandService {
     public ProductResponse get(Long productId) {
         ProductSpuEntity spu = spuRepository.findWithSkusById(productId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found"));
+        if (spu.isDeleted()) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found");
+        }
         return new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId());
+    }
+
+    @Transactional
+    public ProductResponse update(Long productId, ProductUpdateRequest request) {
+        ProductSpuEntity spu = spuRepository.findWithSkusById(productId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found"));
+        if (spu.isDeleted()) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found");
+        }
+        spu.updateBasics(request.title(), request.categoryId());
+        return new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId());
+    }
+
+    @Transactional
+    public void delete(Long productId) {
+        ProductSpuEntity spu = spuRepository.findWithSkusById(productId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found"));
+        spu.archive();
     }
 
     @Transactional(readOnly = true)
     public ProductListResponse list(Long merchantId, int page, int pageSize) {
         int safePage = Math.max(page, 1);
         int safePageSize = Math.max(pageSize, 1);
-        var pageResult = spuRepository.findByMerchantId(merchantId, org.springframework.data.domain.PageRequest.of(safePage - 1, safePageSize));
+        var pageResult = spuRepository.findByMerchantIdAndStatusNot(
+            merchantId,
+            "deleted",
+            org.springframework.data.domain.PageRequest.of(safePage - 1, safePageSize)
+        );
         var items = pageResult.getContent().stream()
             .map(spu -> new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId()))
             .toList();

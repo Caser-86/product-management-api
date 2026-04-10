@@ -2,6 +2,7 @@ package com.example.ecommerce.inventory.api;
 
 import com.example.ecommerce.inventory.application.InventoryService;
 import com.example.ecommerce.shared.api.ApiResponse;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,14 +29,22 @@ public class InventoryController {
     @PostMapping("/inventory/reservations/{reservationId}/confirm")
     public ApiResponse<Void> confirm(
         @PathVariable String reservationId,
-        @RequestBody InventoryReservationConfirmRequest request
+        @Valid @RequestBody InventoryReservationConfirmRequest request
     ) {
         inventoryService.confirm(reservationId, request.bizId());
         return ApiResponse.success(null);
     }
 
+    @PostMapping("/admin/skus/{skuId}/inventory/adjustments")
+    public ApiResponse<Map<String, Object>> adjust(
+        @PathVariable Long skuId,
+        @Valid @RequestBody InventoryAdjustmentRequest request
+    ) {
+        return ApiResponse.success(inventoryService.adjust(skuId, request.delta(), request.reason(), request.operatorId()));
+    }
+
     @GetMapping("/admin/skus/{skuId}/inventory")
     public ApiResponse<Map<String, Object>> inventory(@PathVariable Long skuId) {
-        return ApiResponse.success(Map.of("skuId", skuId, "soldQty", inventoryService.soldQty(skuId)));
+        return ApiResponse.success(inventoryService.snapshot(skuId));
     }
 }

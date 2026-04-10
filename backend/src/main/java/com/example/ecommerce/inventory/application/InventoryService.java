@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class InventoryService {
@@ -71,9 +72,31 @@ public class InventoryService {
     }
 
     @Transactional(readOnly = true)
-    public int soldQty(Long skuId) {
-        return inventoryBalanceRepository.findById(skuId)
-            .orElseThrow(() -> new IllegalArgumentException("inventory not found"))
-            .getSoldQty();
+    public Map<String, Object> snapshot(Long skuId) {
+        var balance = inventoryBalanceRepository.findById(skuId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        return Map.of(
+            "skuId", skuId,
+            "totalQty", balance.getTotalQty(),
+            "availableQty", balance.getAvailableQty(),
+            "reservedQty", balance.getReservedQty(),
+            "soldQty", balance.getSoldQty()
+        );
+    }
+
+    @Transactional
+    public Map<String, Object> adjust(Long skuId, int delta, String reason, Long operatorId) {
+        var balance = inventoryBalanceRepository.findById(skuId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        balance.adjust(delta);
+        return Map.of(
+            "skuId", skuId,
+            "totalQty", balance.getTotalQty(),
+            "availableQty", balance.getAvailableQty(),
+            "reservedQty", balance.getReservedQty(),
+            "soldQty", balance.getSoldQty(),
+            "reason", reason == null ? "" : reason,
+            "operatorId", operatorId == null ? 0L : operatorId
+        );
     }
 }

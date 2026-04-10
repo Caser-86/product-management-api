@@ -13,4 +13,19 @@ public interface ProductSpuRepository extends JpaRepository<ProductSpuEntity, Lo
     Optional<ProductSpuEntity> findWithSkusById(Long id);
 
     Page<ProductSpuEntity> findByMerchantId(Long merchantId, Pageable pageable);
+
+    Page<ProductSpuEntity> findByMerchantIdAndStatusNot(Long merchantId, String status, Pageable pageable);
+
+    Page<ProductSpuEntity> findByStatusNot(String status, Pageable pageable);
+
+    Page<ProductSpuEntity> findByStatusNotAndCategoryId(String status, Long categoryId, Pageable pageable);
+
+    Page<ProductSpuEntity> findByStatusNotAndTitleContainingIgnoreCase(String status, String title, Pageable pageable);
+
+    Page<ProductSpuEntity> findByStatusNotAndTitleContainingIgnoreCaseAndCategoryId(
+        String status,
+        String title,
+        Long categoryId,
+        Pageable pageable
+    );
 }

@@ -64,6 +64,20 @@ public class ProductSpuEntity {
         skus.add(sku);
     }
 
+    public void updateBasics(String title, Long categoryId) {
+        this.title = title;
+        this.categoryId = categoryId;
+    }
+
+    public void archive() {
+        this.status = "deleted";
+        this.publishStatus = "unpublished";
+    }
+
+    public boolean isDeleted() {
+        return "deleted".equals(status);
+    }
+
     public Long getId() {
         return id;
     }

@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,6 +24,20 @@ public class PricingController {
     @PatchMapping("/admin/skus/{skuId}/prices")
     public ApiResponse<Void> update(@PathVariable Long skuId, @Valid @RequestBody PriceUpdateRequest request) {
         pricingService.updatePrice(skuId, request);
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/admin/skus/{skuId}/price-schedules")
+    public ApiResponse<Map<String, Object>> createSchedule(
+        @PathVariable Long skuId,
+        @Valid @RequestBody PriceScheduleRequest request
+    ) {
+        return ApiResponse.success(pricingService.createSchedule(skuId, request));
+    }
+
+    @PostMapping("/admin/price-schedules/{scheduleId}/apply")
+    public ApiResponse<Void> applySchedule(@PathVariable Long scheduleId) {
+        pricingService.applyScheduledPrice(scheduleId);
         return ApiResponse.success(null);
     }
 

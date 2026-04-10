@@ -33,7 +33,7 @@ public class PriceCurrentEntity {
 
     @Version
     @Column(nullable = false)
-    private long version;
+    private Long version;
 
     protected PriceCurrentEntity() {
     }

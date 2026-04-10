@@ -128,4 +128,40 @@ class InventoryControllerTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.soldQty").value(2));
     }
+
+    @Test
+    void adjusts_inventory_for_admin_operations() throws Exception {
+        mockMvc.perform(post("/admin/skus/1/inventory/adjustments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "delta": 5,
+                      "reason": "manual restock",
+                      "operatorId": 9001
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.availableQty").value(15))
+            .andExpect(jsonPath("$.data.totalQty").value(15));
+
+        mockMvc.perform(post("/admin/skus/1/inventory/adjustments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "delta": -3,
+                      "reason": "damage writeoff",
+                      "operatorId": 9001
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.availableQty").value(12))
+            .andExpect(jsonPath("$.data.totalQty").value(12));
+
+        mockMvc.perform(get("/admin/skus/1/inventory"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.totalQty").value(12))
+            .andExpect(jsonPath("$.data.availableQty").value(12))
+            .andExpect(jsonPath("$.data.reservedQty").value(0))
+            .andExpect(jsonPath("$.data.soldQty").value(0));
+    }
 }

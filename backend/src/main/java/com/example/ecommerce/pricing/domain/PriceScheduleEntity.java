@@ -60,4 +60,32 @@ public class PriceScheduleEntity {
         entity.status = "pending";
         return entity;
     }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getSkuId() {
+        return skuId;
+    }
+
+    public String getTargetPriceJson() {
+        return targetPriceJson;
+    }
+
+    public LocalDateTime getEffectiveAt() {
+        return effectiveAt;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public boolean isPending() {
+        return "pending".equals(status);
+    }
+
+    public void markApplied() {
+        this.status = "applied";
+    }
 }

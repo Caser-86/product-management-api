@@ -65,6 +65,20 @@ public class PriceHistoryEntity {
         return entity;
     }
 
+    public static PriceHistoryEntity scheduled(
+        Long skuId,
+        Long merchantId,
+        String oldPriceJson,
+        BigDecimal listPrice,
+        BigDecimal salePrice,
+        String reason,
+        Long operatorId
+    ) {
+        PriceHistoryEntity entity = manual(skuId, merchantId, oldPriceJson, listPrice, salePrice, reason, operatorId);
+        entity.changeType = "scheduled";
+        return entity;
+    }
+
     public static String priceJson(BigDecimal listPrice, BigDecimal salePrice) {
         return "{\"listPrice\":" + listPrice.toPlainString() + ",\"salePrice\":" + salePrice.toPlainString() + "}";
     }
