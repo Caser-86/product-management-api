@@ -1,0 +1,28 @@
+CREATE TABLE product_spu (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    merchant_id BIGINT NOT NULL,
+    spu_code VARCHAR(64) NOT NULL UNIQUE,
+    title VARCHAR(255) NOT NULL,
+    category_id BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    publish_status VARCHAR(20) NOT NULL,
+    audit_status VARCHAR(20) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE product_sku (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    spu_id BIGINT NOT NULL,
+    merchant_id BIGINT NOT NULL,
+    sku_code VARCHAR(64) NOT NULL UNIQUE,
+    spec_snapshot JSON NOT NULL,
+    spec_hash CHAR(64) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    sale_status VARCHAR(20) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT uk_spu_spec_hash UNIQUE (spu_id, spec_hash),
+    CONSTRAINT fk_sku_spu FOREIGN KEY (spu_id) REFERENCES product_spu(id)
+);

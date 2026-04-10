@@ -1,0 +1,98 @@
+package com.example.ecommerce.product.api;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc(addFilters = false)
+class AdminProductControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    void creates_product_and_reads_it_back() throws Exception {
+        ProductCreateRequest request = ProductCreateRequest.sample();
+
+        var createResult = mockMvc.perform(post("/admin/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.success").value(true))
+            .andReturn();
+
+        long productId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+            .path("data")
+            .path("id")
+            .asLong();
+
+        mockMvc.perform(get("/admin/products/{productId}", productId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.title").value(request.title()));
+    }
+
+    @Test
+    void updates_product_basics() throws Exception {
+        ProductCreateRequest request = ProductCreateRequest.sample();
+        var createResult = mockMvc.perform(post("/admin/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        long productId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+            .path("data")
+            .path("id")
+            .asLong();
+
+        mockMvc.perform(put("/admin/products/{productId}", productId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "title": "updated-hoodie",
+                      "categoryId": 66
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.title").value("updated-hoodie"))
+            .andExpect(jsonPath("$.data.categoryId").value(66));
+    }
+
+    @Test
+    void deletes_product_and_hides_it_from_reads() throws Exception {
+        ProductCreateRequest request = ProductCreateRequest.sample();
+        var createResult = mockMvc.perform(post("/admin/products")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        long productId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+            .path("data")
+            .path("id")
+            .asLong();
+
+        mockMvc.perform(delete("/admin/products/{productId}", productId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.code").value("SUCCESS"));
+
+        mockMvc.perform(get("/admin/products/{productId}", productId))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
+    }
+}
