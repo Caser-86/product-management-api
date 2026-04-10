@@ -1,3 +1,6 @@
+server:
+  port: ${SERVER_PORT:8080}
+
 spring:
   application:
     name: product-management-api
@@ -13,3 +16,9 @@ spring:
         format_sql: true
   flyway:
     enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

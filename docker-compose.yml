@@ -1,0 +1,37 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: product-management-mysql
+    environment:
+      MYSQL_DATABASE: ecommerce
+      MYSQL_USER: ecommerce
+      MYSQL_PASSWORD: ecommerce
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - mysql-data:/var/lib/mysql
+
+  product-management-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: product-management-api
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: 8080
+      DB_URL: jdbc:mysql://mysql:3306/ecommerce
+      DB_USERNAME: ecommerce
+      DB_PASSWORD: ecommerce
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql-data:
