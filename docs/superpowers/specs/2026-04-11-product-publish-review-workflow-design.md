@@ -93,7 +93,8 @@ They are not storefront-visible.
 When a merchant submits a product for review:
 
 - product must not be deleted
-- product must belong to the merchant unless caller is platform admin
+- caller must be a merchant admin
+- product must belong to the caller's merchant
 - product remains `draft`
 - `audit_status` becomes `pending`
 - `publish_status` remains `unpublished`
@@ -154,9 +155,9 @@ When a platform admin unpublishes a product:
 
 Unpublished products are no longer storefront-visible.
 
-### Update After Publish
+### Update After Approved Content
 
-If a merchant updates basic product information after the product is published:
+If a merchant updates basic product information after the product has already been approved, including products that were previously published and then unpublished:
 
 - the product is automatically taken offline
 - `status` becomes `draft`
@@ -374,7 +375,7 @@ Cover:
 - unapproved product cannot be published
 - approved product can be published
 - published product can be unpublished
-- published product update resets it to draft, pending, unpublished
+- approved product update resets it to draft, pending, unpublished
 - invalid transitions are rejected
 - merchant scope and role boundaries are enforced
 
