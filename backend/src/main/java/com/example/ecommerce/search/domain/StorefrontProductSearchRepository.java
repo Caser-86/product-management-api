@@ -6,22 +6,33 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StorefrontProductSearchRepository extends JpaRepository<StorefrontProductSearchEntity, Long> {
 
-    Page<StorefrontProductSearchEntity> findByProductStatusNot(String productStatus, Pageable pageable);
-
-    Page<StorefrontProductSearchEntity> findByProductStatusNotAndCategoryId(
+    Page<StorefrontProductSearchEntity> findByProductStatusNotAndPublishStatusAndAuditStatus(
         String productStatus,
+        String publishStatus,
+        String auditStatus,
+        Pageable pageable
+    );
+
+    Page<StorefrontProductSearchEntity> findByProductStatusNotAndPublishStatusAndAuditStatusAndCategoryId(
+        String productStatus,
+        String publishStatus,
+        String auditStatus,
         Long categoryId,
         Pageable pageable
     );
 
-    Page<StorefrontProductSearchEntity> findByProductStatusNotAndTitleContainingIgnoreCase(
+    Page<StorefrontProductSearchEntity> findByProductStatusNotAndPublishStatusAndAuditStatusAndTitleContainingIgnoreCase(
         String productStatus,
+        String publishStatus,
+        String auditStatus,
         String title,
         Pageable pageable
     );
 
-    Page<StorefrontProductSearchEntity> findByProductStatusNotAndTitleContainingIgnoreCaseAndCategoryId(
+    Page<StorefrontProductSearchEntity> findByProductStatusNotAndPublishStatusAndAuditStatusAndTitleContainingIgnoreCaseAndCategoryId(
         String productStatus,
+        String publishStatus,
+        String auditStatus,
         String title,
         Long categoryId,
         Pageable pageable
