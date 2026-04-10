@@ -1,6 +1,7 @@
 package com.example.ecommerce.product.application;
 
 import com.example.ecommerce.product.api.ProductCreateRequest;
+import com.example.ecommerce.product.api.ProductListResponse;
 import com.example.ecommerce.product.api.ProductResponse;
 import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
@@ -37,5 +38,15 @@ public class ProductCommandService {
         ProductSpuEntity spu = spuRepository.findWithSkusById(productId)
             .orElseThrow(() -> new IllegalArgumentException("product not found"));
         return new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId());
+    }
+
+    @Transactional(readOnly = true)
+    public ProductListResponse list(Long merchantId, int page, int pageSize) {
+        var pageResult = spuRepository.findAll(org.springframework.data.domain.PageRequest.of(page - 1, pageSize));
+        var items = pageResult.getContent().stream()
+            .filter(spu -> spu.getMerchantId().equals(merchantId))
+            .map(spu -> new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId()))
+            .toList();
+        return new ProductListResponse(items, page, pageSize, pageResult.getTotalElements());
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -28,5 +29,14 @@ public class AdminProductController {
     @GetMapping("/{productId}")
     public ApiResponse<ProductResponse> get(@PathVariable Long productId) {
         return ApiResponse.success(productCommandService.get(productId));
+    }
+
+    @GetMapping
+    public ApiResponse<ProductListResponse> list(
+        @RequestParam Long merchantId,
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "20") int pageSize
+    ) {
+        return ApiResponse.success(productCommandService.list(merchantId, page, pageSize));
     }
 }
