@@ -94,7 +94,22 @@ public class ProductCommandService {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found");
         }
         assertMerchantScope(spu.getMerchantId());
+        boolean requiresReviewReset = "approved".equals(spu.getAuditStatus());
+        String fromStatus = spu.getStatus();
+        String fromAuditStatus = spu.getAuditStatus();
+        String fromPublishStatus = spu.getPublishStatus();
         spu.updateBasics(request.title(), request.categoryId());
+        if (requiresReviewReset) {
+            spu.resetToDraftAfterMutation();
+            recordWorkflow(
+                spu,
+                "update_reset",
+                fromStatus,
+                fromAuditStatus,
+                fromPublishStatus,
+                "product updated after approval"
+            );
+        }
         productSearchProjector.refresh(spu.getId());
         return toProductResponse(spu);
     }
