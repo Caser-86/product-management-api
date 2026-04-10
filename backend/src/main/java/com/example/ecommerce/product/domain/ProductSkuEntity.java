@@ -57,4 +57,12 @@ public class ProductSkuEntity {
     void attachTo(ProductSpuEntity spu) {
         this.spu = spu;
     }
+
+    public Long getId() {
+        return id;
+    }
+
+    public Long getMerchantId() {
+        return merchantId;
+    }
 }

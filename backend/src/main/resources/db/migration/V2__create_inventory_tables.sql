@@ -1,0 +1,10 @@
+CREATE TABLE inventory_balance (
+    sku_id BIGINT PRIMARY KEY,
+    merchant_id BIGINT NOT NULL,
+    total_qty INT NOT NULL DEFAULT 0,
+    available_qty INT NOT NULL DEFAULT 0,
+    reserved_qty INT NOT NULL DEFAULT 0,
+    sold_qty INT NOT NULL DEFAULT 0,
+    version BIGINT NOT NULL DEFAULT 0,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
