@@ -2,6 +2,7 @@ package com.example.ecommerce.product.api;
 
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
+import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,8 +28,12 @@ class AdminProductListTest {
     @Autowired
     private ProductSpuRepository productSpuRepository;
 
+    @Autowired
+    private ProductWorkflowHistoryRepository workflowHistoryRepository;
+
     @BeforeEach
     void setUp() {
+        workflowHistoryRepository.deleteAll();
         productSpuRepository.deleteAll();
         productSpuRepository.save(ProductSpuEntity.draft(2001L, "SPU-LIST-2001", "merchant-2001-product", 33L));
         productSpuRepository.save(ProductSpuEntity.draft(2002L, "SPU-LIST-2002", "merchant-2002-product", 33L));

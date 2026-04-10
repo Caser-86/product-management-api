@@ -4,6 +4,7 @@ import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryEntity;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -34,6 +35,12 @@ class AdminProductWorkflowControllerTest {
 
     @Autowired
     private ProductWorkflowHistoryRepository workflowHistoryRepository;
+
+    @BeforeEach
+    void setUp() {
+        workflowHistoryRepository.deleteAll();
+        productSpuRepository.deleteAll();
+    }
 
     @Test
     void platform_admin_can_approve_submitted_product() throws Exception {

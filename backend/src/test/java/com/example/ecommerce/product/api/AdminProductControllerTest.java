@@ -5,6 +5,7 @@ import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryEntity;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -40,6 +41,12 @@ class AdminProductControllerTest {
 
     @Autowired
     private ProductWorkflowHistoryRepository workflowHistoryRepository;
+
+    @BeforeEach
+    void setUp() {
+        workflowHistoryRepository.deleteAll();
+        productSpuRepository.deleteAll();
+    }
 
     @Test
     void creates_product_and_reads_it_back() throws Exception {
