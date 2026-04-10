@@ -10,6 +10,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
+        return ResponseEntity.badRequest()
+            .body(new ApiResponse<>(false, ex.getErrorCode().name(), ex.getMessage(), null));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
         ApiResponse<Void> response = new ApiResponse<>(
