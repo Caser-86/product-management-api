@@ -62,6 +62,28 @@ Application defaults come from `application.yml` and can be overridden with:
 - `DB_URL` default: `jdbc:mysql://localhost:3306/ecommerce`
 - `DB_USERNAME` default: `ecommerce`
 - `DB_PASSWORD` default: `ecommerce`
+- `pricing.schedule.fixed-delay-ms` default: `30000`
+
+## Authentication
+
+Protected endpoints require request headers:
+
+- `X-User-Id`
+- `X-Role`
+- `X-Merchant-Id`
+
+Supported roles:
+
+- `PLATFORM_ADMIN`: can operate across merchants
+- `MERCHANT_ADMIN`: restricted to its own merchant data
+
+Anonymous access remains available for storefront read endpoints such as
+`GET /products`.
+
+## Scheduling
+
+Due price schedules are applied automatically by the in-process scheduler.
+Manual application is still available through the admin API.
 
 ## API Documentation
 
@@ -76,3 +98,5 @@ After the application starts, interactive API docs are available at:
 - Implementation plan: `docs/superpowers/plans/2026-04-10-product-management-api-implementation-plan.md`
 - Delivery packaging spec: `docs/superpowers/specs/2026-04-10-delivery-packaging-design.md`
 - Delivery packaging plan: `docs/superpowers/plans/2026-04-10-delivery-packaging-implementation-plan.md`
+- Auth/ledger/scheduling spec: `docs/superpowers/specs/2026-04-10-auth-ledger-scheduling-design.md`
+- Auth/ledger/scheduling plan: `docs/superpowers/plans/2026-04-10-auth-ledger-scheduling-implementation-plan.md`

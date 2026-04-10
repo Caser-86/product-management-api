@@ -58,4 +58,24 @@ public class InventoryLedgerEntity {
         entity.deltaReserved = deltaReserved;
         return entity;
     }
+
+    public String getBizType() {
+        return bizType;
+    }
+
+    public String getBizId() {
+        return bizId;
+    }
+
+    public int getDeltaAvailable() {
+        return deltaAvailable;
+    }
+
+    public int getDeltaReserved() {
+        return deltaReserved;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
 }

@@ -11,9 +11,12 @@ import com.example.ecommerce.pricing.domain.PriceScheduleRepository;
 import com.example.ecommerce.product.domain.ProductSkuRepository;
 import com.example.ecommerce.shared.api.BusinessException;
 import com.example.ecommerce.shared.api.ErrorCode;
+import com.example.ecommerce.shared.auth.AuthContext;
+import com.example.ecommerce.shared.auth.AuthContextHolder;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +50,7 @@ public class PricingService {
 
     @Transactional
     public void updatePrice(Long skuId, PriceUpdateRequest request) {
+        assertSkuScope(skuId);
         writePrice(
             skuId,
             request.listPrice(),
@@ -61,6 +65,7 @@ public class PricingService {
     public Map<String, Object> createSchedule(Long skuId, PriceScheduleRequest request) {
         var sku = productSkuRepository.findById(skuId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "sku not found"));
+        assertMerchantScope(sku.getMerchantId());
         validatePrice(request.listPrice(), request.salePrice());
         String payload = schedulePayload(request);
         PriceScheduleEntity schedule = priceScheduleRepository.save(
@@ -71,6 +76,7 @@ public class PricingService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> history(Long skuId) {
+        assertSkuScope(skuId);
         List<Map<String, Object>> items = priceHistoryRepository.findBySkuIdOrderByIdDesc(skuId).stream()
             .map(history -> Map.<String, Object>of(
                 "changeType", history.getChangeType(),
@@ -91,6 +97,29 @@ public class PricingService {
         }
         PriceScheduleEntity schedule = priceScheduleRepository.findById(scheduleId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRICE_SCHEDULE_CONFLICT, "price schedule not found"));
+        assertMerchantScope(schedule.getMerchantId());
+        applyScheduledPriceInternal(schedule);
+    }
+
+    @Transactional
+    public int applyDueSchedules(int limit) {
+        if (limit <= 0) {
+            return 0;
+        }
+        List<PriceScheduleEntity> dueSchedules = priceScheduleRepository.findByStatusAndEffectiveAtLessThanEqualOrderByEffectiveAtAsc(
+            "pending",
+            LocalDateTime.now(),
+            PageRequest.of(0, limit)
+        );
+        int applied = 0;
+        for (PriceScheduleEntity schedule : dueSchedules) {
+            applyScheduledPriceInternal(schedule);
+            applied++;
+        }
+        return applied;
+    }
+
+    private void applyScheduledPriceInternal(PriceScheduleEntity schedule) {
         if (!schedule.isPending()) {
             return;
         }
@@ -181,6 +210,20 @@ public class PricingService {
             return objectMapper.readTree(normalizeJson(rawJson));
         } catch (JsonProcessingException ex) {
             throw new BusinessException(ErrorCode.PRICE_SCHEDULE_CONFLICT, "invalid price schedule payload");
+        }
+    }
+
+    private void assertSkuScope(Long skuId) {
+        Long merchantId = productSkuRepository.findById(skuId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "sku not found"))
+            .getMerchantId();
+        assertMerchantScope(merchantId);
+    }
+
+    private void assertMerchantScope(Long merchantId) {
+        AuthContext auth = AuthContextHolder.getRequired();
+        if (!auth.isPlatformAdmin() && !auth.merchantId().equals(merchantId)) {
+            throw new BusinessException(ErrorCode.AUTH_MERCHANT_SCOPE_DENIED, "merchant scope denied");
         }
     }
 }

@@ -1,7 +1,11 @@
 package com.example.ecommerce.shared.api;
 
+import com.example.ecommerce.product.domain.ProductSkuEntity;
+import com.example.ecommerce.product.domain.ProductSpuEntity;
+import com.example.ecommerce.product.domain.ProductSpuRepository;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -24,10 +28,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 class GlobalExceptionHandlerTest {
 
+    private static final String USER_ID_HEADER = "X-User-Id";
+    private static final String ROLE_HEADER = "X-Role";
+    private static final String MERCHANT_ID_HEADER = "X-Merchant-Id";
+
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private ProductSpuRepository productSpuRepository;
+
+    private Long skuId;
+
+    @BeforeEach
+    void setUp() {
+        productSpuRepository.deleteAll();
+        ProductSpuEntity spu = ProductSpuEntity.draft(2001L, "SPU-ERR-1", "error-demo", 33L);
+        spu.addSku(ProductSkuEntity.of(2001L, "SKU-ERR-1", "{\"color\":\"black\"}", "error-hash-1"));
+        skuId = productSpuRepository.save(spu).getSkus().get(0).getId();
+    }
 
     @Test
     void maps_bind_exception_to_common_validation_failed() {
@@ -58,7 +79,10 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void returns_validation_error_payload() throws Exception {
-        mockMvc.perform(patch("/admin/skus/1/prices")
+        mockMvc.perform(patch("/admin/skus/{skuId}/prices", skuId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
                 .contentType("application/json")
                 .content("""
                     {
@@ -72,7 +96,10 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void returns_request_body_validation_error_payload() throws Exception {
-        mockMvc.perform(patch("/admin/skus/1/prices")
+        mockMvc.perform(patch("/admin/skus/{skuId}/prices", skuId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
                 .contentType("application/json")
                 .content("""
                     {

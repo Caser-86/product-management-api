@@ -21,6 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 class ProductManagementFlowTest {
 
+    private static final String USER_ID_HEADER = "X-User-Id";
+    private static final String ROLE_HEADER = "X-Role";
+    private static final String MERCHANT_ID_HEADER = "X-Merchant-Id";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -33,6 +37,9 @@ class ProductManagementFlowTest {
     @Test
     void admin_can_create_product_adjust_inventory_update_price_and_search() throws Exception {
         MvcResult createResult = mockMvc.perform(post("/admin/products")
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -62,6 +69,9 @@ class ProductManagementFlowTest {
             .getId();
 
         MvcResult reserveResult = mockMvc.perform(post("/inventory/reservations")
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -79,6 +89,9 @@ class ProductManagementFlowTest {
             .asText();
 
         mockMvc.perform(post("/inventory/reservations/{reservationId}/confirm", reservationId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"bizId":"ORDER-8001","operatorType":"system"}
@@ -86,6 +99,9 @@ class ProductManagementFlowTest {
             .andExpect(status().isOk());
 
         mockMvc.perform(patch("/admin/skus/{skuId}/prices", skuId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {

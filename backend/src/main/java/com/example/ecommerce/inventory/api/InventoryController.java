@@ -57,4 +57,10 @@ public class InventoryController {
     public ApiResponse<Map<String, Object>> inventory(@PathVariable Long skuId) {
         return ApiResponse.success(inventoryService.snapshot(skuId));
     }
+
+    @GetMapping("/admin/skus/{skuId}/inventory/history")
+    @Operation(summary = "Get inventory history", description = "Returns immutable inventory ledger records for a SKU.")
+    public ApiResponse<Map<String, Object>> history(@PathVariable Long skuId) {
+        return ApiResponse.success(inventoryService.history(skuId));
+    }
 }

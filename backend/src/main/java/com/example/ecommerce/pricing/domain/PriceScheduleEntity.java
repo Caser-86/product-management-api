@@ -81,6 +81,10 @@ public class PriceScheduleEntity {
         return status;
     }
 
+    public Long getMerchantId() {
+        return merchantId;
+    }
+
     public boolean isPending() {
         return "pending".equals(status);
     }

@@ -65,6 +65,10 @@ public class InventoryBalanceEntity {
         return soldQty;
     }
 
+    public Long getMerchantId() {
+        return merchantId;
+    }
+
     public void reserve(int quantity) {
         if (quantity <= 0) {
             throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "reservation quantity must be positive");
