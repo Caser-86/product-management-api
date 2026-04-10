@@ -1,4 +1,5 @@
 .idea/
+.tools/
 .worktrees/
 worktrees/
 build/
