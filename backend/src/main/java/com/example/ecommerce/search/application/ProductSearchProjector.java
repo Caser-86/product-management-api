@@ -2,6 +2,7 @@ package com.example.ecommerce.search.application;
 
 import com.example.ecommerce.inventory.domain.InventoryBalanceRepository;
 import com.example.ecommerce.pricing.domain.PriceCurrentRepository;
+import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.search.domain.StorefrontProductSearchEntity;
 import com.example.ecommerce.search.domain.StorefrontProductSearchRepository;
@@ -10,6 +11,8 @@ import com.example.ecommerce.shared.api.ErrorCode;
 import com.example.ecommerce.shared.outbox.OutboxEvent;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
 
 @Component
 public class ProductSearchProjector {
@@ -39,10 +42,39 @@ public class ProductSearchProjector {
             storefrontProductSearchRepository.deleteById(productId);
             return;
         }
-        var sku = spu.getSkus().get(0);
-        var price = priceCurrentRepository.findById(sku.getId()).orElse(null);
-        var inventory = inventoryBalanceRepository.findById(sku.getId()).orElse(null);
-        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.from(spu, sku, price, inventory));
+        ProductSkuEntity primarySku = spu.getSkus().get(0);
+        BigDecimal minPrice = BigDecimal.ZERO;
+        BigDecimal maxPrice = BigDecimal.ZERO;
+        boolean hasPrice = false;
+        int availableQty = 0;
+
+        for (ProductSkuEntity sku : spu.getSkus()) {
+            var price = priceCurrentRepository.findById(sku.getId()).orElse(null);
+            if (price != null) {
+                minPrice = hasPrice ? minPrice.min(price.getSalePrice()) : price.getSalePrice();
+                maxPrice = hasPrice ? maxPrice.max(price.getListPrice()) : price.getListPrice();
+                hasPrice = true;
+            }
+            var inventory = inventoryBalanceRepository.findById(sku.getId()).orElse(null);
+            if (inventory != null) {
+                availableQty += inventory.getAvailableQty();
+            }
+        }
+
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            spu.getId(),
+            spu.getMerchantId(),
+            spu.getCategoryId(),
+            spu.getTitle(),
+            primarySku.getId(),
+            minPrice,
+            maxPrice,
+            availableQty,
+            availableQty > 0 ? "in_stock" : "out_of_stock",
+            spu.getStatus(),
+            spu.getPublishStatus(),
+            spu.getAuditStatus()
+        ));
     }
 
     @Transactional
