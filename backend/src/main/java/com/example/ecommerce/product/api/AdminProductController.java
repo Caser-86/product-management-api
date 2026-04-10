@@ -69,4 +69,58 @@ public class AdminProductController {
     ) {
         return ApiResponse.success(productCommandService.list(merchantId, page, pageSize));
     }
+
+    @PostMapping("/{productId}/submit-for-review")
+    @Operation(summary = "Submit product for review", description = "Submits a draft product for platform review.")
+    public ApiResponse<ProductResponse> submitForReview(
+        @PathVariable Long productId,
+        @Valid @RequestBody(required = false) ProductWorkflowActionRequest request
+    ) {
+        return ApiResponse.success(productCommandService.submitForReview(productId, request));
+    }
+
+    @PostMapping("/{productId}/resubmit-for-review")
+    @Operation(summary = "Resubmit product for review", description = "Resubmits a rejected product for platform review.")
+    public ApiResponse<ProductResponse> resubmitForReview(
+        @PathVariable Long productId,
+        @Valid @RequestBody(required = false) ProductWorkflowActionRequest request
+    ) {
+        return ApiResponse.success(productCommandService.resubmitForReview(productId, request));
+    }
+
+    @PostMapping("/{productId}/approve")
+    @Operation(summary = "Approve product", description = "Platform admin approves a submitted product.")
+    public ApiResponse<ProductResponse> approve(
+        @PathVariable Long productId,
+        @Valid @RequestBody(required = false) ProductWorkflowActionRequest request
+    ) {
+        return ApiResponse.success(productCommandService.approve(productId, request));
+    }
+
+    @PostMapping("/{productId}/reject")
+    @Operation(summary = "Reject product", description = "Platform admin rejects a submitted product.")
+    public ApiResponse<ProductResponse> reject(
+        @PathVariable Long productId,
+        @Valid @RequestBody ProductWorkflowRejectRequest request
+    ) {
+        return ApiResponse.success(productCommandService.reject(productId, request));
+    }
+
+    @PostMapping("/{productId}/publish")
+    @Operation(summary = "Publish product", description = "Platform admin publishes an approved product.")
+    public ApiResponse<ProductResponse> publish(
+        @PathVariable Long productId,
+        @Valid @RequestBody(required = false) ProductWorkflowActionRequest request
+    ) {
+        return ApiResponse.success(productCommandService.publish(productId, request));
+    }
+
+    @PostMapping("/{productId}/unpublish")
+    @Operation(summary = "Unpublish product", description = "Platform admin unpublishes a published product.")
+    public ApiResponse<ProductResponse> unpublish(
+        @PathVariable Long productId,
+        @Valid @RequestBody(required = false) ProductWorkflowActionRequest request
+    ) {
+        return ApiResponse.success(productCommandService.unpublish(productId, request));
+    }
 }
