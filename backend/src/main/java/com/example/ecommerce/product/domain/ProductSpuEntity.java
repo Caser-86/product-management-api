@@ -68,6 +68,18 @@ public class ProductSpuEntity {
         return id;
     }
 
+    public Long getMerchantId() {
+        return merchantId;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public Long getCategoryId() {
+        return categoryId;
+    }
+
     public List<ProductSkuEntity> getSkus() {
         return skus;
     }
