@@ -46,6 +46,9 @@ class AdminProductControllerTest {
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.status").value("draft"))
+            .andExpect(jsonPath("$.data.auditStatus").value("pending"))
+            .andExpect(jsonPath("$.data.publishStatus").value("unpublished"))
             .andReturn();
 
         long productId = objectMapper.readTree(createResult.getResponse().getContentAsString())
@@ -58,7 +61,14 @@ class AdminProductControllerTest {
                 .header(ROLE_HEADER, "PLATFORM_ADMIN")
                 .header(MERCHANT_ID_HEADER, "2001"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.title").value(request.title()));
+            .andExpect(jsonPath("$.data.title").value(request.title()))
+            .andExpect(jsonPath("$.data.status").value("draft"))
+            .andExpect(jsonPath("$.data.auditStatus").value("pending"))
+            .andExpect(jsonPath("$.data.publishStatus").value("unpublished"))
+            .andExpect(jsonPath("$.data.auditComment").isEmpty())
+            .andExpect(jsonPath("$.data.submittedAt").isEmpty())
+            .andExpect(jsonPath("$.data.auditAt").isEmpty())
+            .andExpect(jsonPath("$.data.publishedAt").isEmpty());
     }
 
     @Test
@@ -91,7 +101,10 @@ class AdminProductControllerTest {
                     """))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.title").value("updated-hoodie"))
-            .andExpect(jsonPath("$.data.categoryId").value(66));
+            .andExpect(jsonPath("$.data.categoryId").value(66))
+            .andExpect(jsonPath("$.data.status").value("draft"))
+            .andExpect(jsonPath("$.data.auditStatus").value("pending"))
+            .andExpect(jsonPath("$.data.publishStatus").value("unpublished"));
     }
 
     @Test

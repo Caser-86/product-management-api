@@ -46,7 +46,10 @@ class AdminProductListTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items").isArray())
             .andExpect(jsonPath("$.data.total").value(1))
-            .andExpect(jsonPath("$.data.page").value(1));
+            .andExpect(jsonPath("$.data.page").value(1))
+            .andExpect(jsonPath("$.data.items[0].status").value("draft"))
+            .andExpect(jsonPath("$.data.items[0].auditStatus").value("pending"))
+            .andExpect(jsonPath("$.data.items[0].publishStatus").value("unpublished"));
     }
 
     @Test
@@ -62,6 +65,9 @@ class AdminProductListTest {
                 .param("pageSize", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.total").value(1))
-            .andExpect(jsonPath("$.data.items[0].merchantId").value(3001));
+            .andExpect(jsonPath("$.data.items[0].merchantId").value(3001))
+            .andExpect(jsonPath("$.data.items[0].status").value("draft"))
+            .andExpect(jsonPath("$.data.items[0].auditStatus").value("pending"))
+            .andExpect(jsonPath("$.data.items[0].publishStatus").value("unpublished"));
     }
 }

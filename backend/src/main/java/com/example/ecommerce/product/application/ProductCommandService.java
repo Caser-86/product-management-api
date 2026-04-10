@@ -63,7 +63,7 @@ public class ProductCommandService {
             inventoryBalanceRepository.save(InventoryBalanceEntity.initial(sku.getId(), sku.getMerchantId(), initialStock));
         }
         productSearchProjector.refresh(saved.getId());
-        return new ProductResponse(saved.getId(), saved.getTitle(), saved.getMerchantId(), saved.getCategoryId());
+        return toProductResponse(saved);
     }
 
     @Transactional(readOnly = true)
@@ -74,7 +74,7 @@ public class ProductCommandService {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found");
         }
         assertMerchantScope(spu.getMerchantId());
-        return new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId());
+        return toProductResponse(spu);
     }
 
     @Transactional
@@ -87,7 +87,7 @@ public class ProductCommandService {
         assertMerchantScope(spu.getMerchantId());
         spu.updateBasics(request.title(), request.categoryId());
         productSearchProjector.refresh(spu.getId());
-        return new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId());
+        return toProductResponse(spu);
     }
 
     @Transactional
@@ -109,9 +109,25 @@ public class ProductCommandService {
             ? spuRepository.findByStatusNot("deleted", pageable)
             : spuRepository.findByMerchantIdAndStatusNot(effectiveMerchantId, "deleted", pageable);
         var items = pageResult.getContent().stream()
-            .map(spu -> new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId()))
+            .map(this::toProductResponse)
             .toList();
         return new ProductListResponse(items, safePage, safePageSize, pageResult.getTotalElements());
+    }
+
+    private ProductResponse toProductResponse(ProductSpuEntity spu) {
+        return new ProductResponse(
+            spu.getId(),
+            spu.getTitle(),
+            spu.getMerchantId(),
+            spu.getCategoryId(),
+            spu.getStatus(),
+            spu.getAuditStatus(),
+            spu.getPublishStatus(),
+            spu.getAuditComment(),
+            spu.getSubmittedAt(),
+            spu.getAuditAt(),
+            spu.getPublishedAt()
+        );
     }
 
     private Long effectiveMerchantId(Long requestedMerchantId, boolean required) {
