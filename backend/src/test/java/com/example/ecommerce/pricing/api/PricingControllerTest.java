@@ -6,6 +6,7 @@ import com.example.ecommerce.pricing.domain.PriceScheduleRepository;
 import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
+import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +49,9 @@ class PricingControllerTest {
     private PriceScheduleRepository priceScheduleRepository;
 
     @Autowired
+    private ProductWorkflowHistoryRepository productWorkflowHistoryRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     private Long skuId;
@@ -57,6 +61,7 @@ class PricingControllerTest {
         priceScheduleRepository.deleteAll();
         priceHistoryRepository.deleteAll();
         priceCurrentRepository.deleteAll();
+        productWorkflowHistoryRepository.deleteAll();
         productSpuRepository.deleteAll();
 
         ProductSpuEntity spu = ProductSpuEntity.draft(2001L, "SPU-PRC-1", "pricing-demo", 33L);

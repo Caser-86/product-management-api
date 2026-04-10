@@ -3,6 +3,7 @@ package com.example.ecommerce.shared.api;
 import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
+import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,10 +41,14 @@ class GlobalExceptionHandlerTest {
     @Autowired
     private ProductSpuRepository productSpuRepository;
 
+    @Autowired
+    private ProductWorkflowHistoryRepository workflowHistoryRepository;
+
     private Long skuId;
 
     @BeforeEach
     void setUp() {
+        workflowHistoryRepository.deleteAll();
         productSpuRepository.deleteAll();
         ProductSpuEntity spu = ProductSpuEntity.draft(2001L, "SPU-ERR-1", "error-demo", 33L);
         spu.addSku(ProductSkuEntity.of(2001L, "SKU-ERR-1", "{\"color\":\"black\"}", "error-hash-1"));

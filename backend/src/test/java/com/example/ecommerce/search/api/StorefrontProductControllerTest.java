@@ -7,6 +7,7 @@ import com.example.ecommerce.pricing.domain.PriceCurrentRepository;
 import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
+import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
 import com.example.ecommerce.search.application.ProductSearchProjector;
 import com.example.ecommerce.search.domain.StorefrontProductSearchEntity;
 import com.example.ecommerce.search.domain.StorefrontProductSearchRepository;
@@ -45,8 +46,12 @@ class StorefrontProductControllerTest {
     @Autowired
     private ProductSearchProjector productSearchProjector;
 
+    @Autowired
+    private ProductWorkflowHistoryRepository productWorkflowHistoryRepository;
+
     @BeforeEach
     void setUp() {
+        productWorkflowHistoryRepository.deleteAll();
         storefrontProductSearchRepository.deleteAll();
         priceCurrentRepository.deleteAll();
         inventoryBalanceRepository.deleteAll();
@@ -114,6 +119,43 @@ class StorefrontProductControllerTest {
 
         mockMvc.perform(get("/products")
                 .param("keyword", "hidden"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.total").value(0));
+    }
+
+    @Test
+    void excludes_rows_that_are_not_published_or_not_approved() throws Exception {
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            1003L,
+            2001L,
+            33L,
+            "hidden-unpublished",
+            20003L,
+            new BigDecimal("129.00"),
+            new BigDecimal("199.00"),
+            8,
+            "in_stock",
+            "active",
+            "unpublished",
+            "approved"
+        ));
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            1004L,
+            2001L,
+            33L,
+            "hidden-pending-audit",
+            20004L,
+            new BigDecimal("129.00"),
+            new BigDecimal("199.00"),
+            8,
+            "in_stock",
+            "active",
+            "published",
+            "pending"
+        ));
+
+        mockMvc.perform(get("/products")
+                .param("keyword", "hidden-"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.total").value(0));
     }

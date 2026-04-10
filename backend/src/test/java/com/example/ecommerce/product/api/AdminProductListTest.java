@@ -2,6 +2,7 @@ package com.example.ecommerce.product.api;
 
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
+import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,8 +28,12 @@ class AdminProductListTest {
     @Autowired
     private ProductSpuRepository productSpuRepository;
 
+    @Autowired
+    private ProductWorkflowHistoryRepository workflowHistoryRepository;
+
     @BeforeEach
     void setUp() {
+        workflowHistoryRepository.deleteAll();
         productSpuRepository.deleteAll();
         productSpuRepository.save(ProductSpuEntity.draft(2001L, "SPU-LIST-2001", "merchant-2001-product", 33L));
         productSpuRepository.save(ProductSpuEntity.draft(2002L, "SPU-LIST-2002", "merchant-2002-product", 33L));
@@ -46,7 +51,10 @@ class AdminProductListTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items").isArray())
             .andExpect(jsonPath("$.data.total").value(1))
-            .andExpect(jsonPath("$.data.page").value(1));
+            .andExpect(jsonPath("$.data.page").value(1))
+            .andExpect(jsonPath("$.data.items[0].status").value("draft"))
+            .andExpect(jsonPath("$.data.items[0].auditStatus").value("pending"))
+            .andExpect(jsonPath("$.data.items[0].publishStatus").value("unpublished"));
     }
 
     @Test
@@ -62,6 +70,9 @@ class AdminProductListTest {
                 .param("pageSize", "10"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.total").value(1))
-            .andExpect(jsonPath("$.data.items[0].merchantId").value(3001));
+            .andExpect(jsonPath("$.data.items[0].merchantId").value(3001))
+            .andExpect(jsonPath("$.data.items[0].status").value("draft"))
+            .andExpect(jsonPath("$.data.items[0].auditStatus").value("pending"))
+            .andExpect(jsonPath("$.data.items[0].publishStatus").value("unpublished"));
     }
 }

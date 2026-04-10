@@ -90,7 +90,26 @@ Manual application is still available through the admin API.
 `GET /products` reads from the `storefront_product_search` projection table.
 The projection is refreshed synchronously after product, inventory, and pricing
 writes so storefront search no longer assembles product, price, and stock data
-at request time.
+at request time. Storefront results only include products that are both
+`approved` and `published`.
+
+## Product Workflow
+
+Products now follow an explicit admin workflow:
+
+1. Merchant creates a draft product
+2. Merchant submits it for review
+3. Platform admin approves or rejects it
+4. Platform admin publishes or unpublishes it
+
+Workflow behavior:
+
+- New products start as `draft` + `pending` + `unpublished`
+- Storefront search only returns `approved` + `published` products
+- Rejected products can be resubmitted
+- Any approved product whose core content changes is forced back to
+  `draft` + `pending` + `unpublished` and must be reviewed again
+- Workflow actions are recorded in `product_workflow_history`
 
 ## API Documentation
 
@@ -107,3 +126,5 @@ After the application starts, interactive API docs are available at:
 - Delivery packaging plan: `docs/superpowers/plans/2026-04-10-delivery-packaging-implementation-plan.md`
 - Auth/ledger/scheduling spec: `docs/superpowers/specs/2026-04-10-auth-ledger-scheduling-design.md`
 - Auth/ledger/scheduling plan: `docs/superpowers/plans/2026-04-10-auth-ledger-scheduling-implementation-plan.md`
+- Product publish/review spec: `docs/superpowers/specs/2026-04-11-product-publish-review-workflow-design.md`
+- Product publish/review plan: `docs/superpowers/plans/2026-04-11-product-publish-review-workflow-implementation-plan.md`

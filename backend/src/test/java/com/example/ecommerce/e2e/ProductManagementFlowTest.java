@@ -1,8 +1,17 @@
 package com.example.ecommerce.e2e;
 
+import com.example.ecommerce.inventory.domain.InventoryBalanceRepository;
+import com.example.ecommerce.inventory.domain.InventoryLedgerRepository;
+import com.example.ecommerce.inventory.domain.InventoryReservationRepository;
+import com.example.ecommerce.pricing.domain.PriceCurrentRepository;
+import com.example.ecommerce.pricing.domain.PriceHistoryRepository;
+import com.example.ecommerce.pricing.domain.PriceScheduleRepository;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
+import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
+import com.example.ecommerce.search.domain.StorefrontProductSearchRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -34,8 +43,49 @@ class ProductManagementFlowTest {
     @Autowired
     private ProductSpuRepository productSpuRepository;
 
+    @Autowired
+    private ProductWorkflowHistoryRepository productWorkflowHistoryRepository;
+
+    @Autowired
+    private StorefrontProductSearchRepository storefrontProductSearchRepository;
+
+    @Autowired
+    private PriceCurrentRepository priceCurrentRepository;
+
+    @Autowired
+    private PriceHistoryRepository priceHistoryRepository;
+
+    @Autowired
+    private PriceScheduleRepository priceScheduleRepository;
+
+    @Autowired
+    private InventoryBalanceRepository inventoryBalanceRepository;
+
+    @Autowired
+    private InventoryLedgerRepository inventoryLedgerRepository;
+
+    @Autowired
+    private InventoryReservationRepository inventoryReservationRepository;
+
+    @BeforeEach
+    void setUp() {
+        productWorkflowHistoryRepository.deleteAll();
+        storefrontProductSearchRepository.deleteAll();
+        priceScheduleRepository.deleteAll();
+        priceHistoryRepository.deleteAll();
+        priceCurrentRepository.deleteAll();
+        inventoryReservationRepository.deleteAll();
+        inventoryLedgerRepository.deleteAll();
+        inventoryBalanceRepository.deleteAll();
+        productSpuRepository.deleteAll();
+    }
+
     @Test
     void admin_can_create_product_adjust_inventory_update_price_and_search() throws Exception {
+        String suffix = String.valueOf(System.nanoTime());
+        String productTitle = "flow-hoodie-" + suffix;
+        String idempotencyKey = "order-" + suffix + "-attempt-1";
+        String bizId = "ORDER-" + suffix;
         MvcResult createResult = mockMvc.perform(post("/admin/products")
                 .header(USER_ID_HEADER, "9001")
                 .header(ROLE_HEADER, "PLATFORM_ADMIN")
@@ -45,7 +95,7 @@ class ProductManagementFlowTest {
                     {
                       "merchantId": 2001,
                       "productType": "merchant",
-                      "title": "flow-hoodie",
+                      "title": "%s",
                       "categoryId": 33,
                       "skus": [
                         {
@@ -56,7 +106,7 @@ class ProductManagementFlowTest {
                         }
                       ]
                     }
-                    """))
+                    """.formatted(productTitle)))
             .andExpect(status().isCreated())
             .andReturn();
 
@@ -75,11 +125,11 @@ class ProductManagementFlowTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
-                      "idempotencyKey": "order-8001-attempt-1",
-                      "bizId": "ORDER-8001",
+                      "idempotencyKey": "%s",
+                      "bizId": "%s",
                       "items": [{"skuId": %d, "quantity": 1}]
                     }
-                    """.formatted(skuId)))
+                    """.formatted(idempotencyKey, bizId, skuId)))
             .andExpect(status().isOk())
             .andReturn();
 
@@ -94,8 +144,8 @@ class ProductManagementFlowTest {
                 .header(MERCHANT_ID_HEADER, "2001")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"bizId":"ORDER-8001","operatorType":"system"}
-                    """))
+                    {"bizId":"%s","operatorType":"system"}
+                    """.formatted(bizId)))
             .andExpect(status().isOk());
 
         mockMvc.perform(patch("/admin/skus/{skuId}/prices", skuId)
@@ -113,9 +163,52 @@ class ProductManagementFlowTest {
                     """))
             .andExpect(status().isOk());
 
+        mockMvc.perform(post("/admin/products/{productId}/submit-for-review", productId)
+                .header(USER_ID_HEADER, "9101")
+                .header(ROLE_HEADER, "MERCHANT_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "comment": "submit product for platform review"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.auditStatus").value("pending"))
+            .andExpect(jsonPath("$.data.publishStatus").value("unpublished"));
+
+        mockMvc.perform(post("/admin/products/{productId}/approve", productId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "comment": "approved for storefront"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.auditStatus").value("approved"))
+            .andExpect(jsonPath("$.data.publishStatus").value("unpublished"));
+
+        mockMvc.perform(post("/admin/products/{productId}/publish", productId)
+                .header(USER_ID_HEADER, "9001")
+                .header(ROLE_HEADER, "PLATFORM_ADMIN")
+                .header(MERCHANT_ID_HEADER, "2001")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "comment": "publish to storefront"
+                    }
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.auditStatus").value("approved"))
+            .andExpect(jsonPath("$.data.publishStatus").value("published"));
+
         mockMvc.perform(get("/products").param("keyword", "flow"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.items[0].title").value("flow-hoodie"))
+            .andExpect(jsonPath("$.data.total").value(1))
+            .andExpect(jsonPath("$.data.items[0].title").value(productTitle))
             .andExpect(jsonPath("$.data.items[0].minPrice").value(149.0))
             .andExpect(jsonPath("$.data.items[0].stockStatus").value("in_stock"));
     }

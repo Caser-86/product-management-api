@@ -13,6 +13,10 @@ import java.util.List;
 @Service
 public class StorefrontSearchService {
 
+    private static final String DELETED_STATUS = "deleted";
+    private static final String PUBLISHED_STATUS = "published";
+    private static final String APPROVED_STATUS = "approved";
+
     private final StorefrontProductSearchRepository storefrontProductSearchRepository;
 
     public StorefrontSearchService(StorefrontProductSearchRepository storefrontProductSearchRepository) {
@@ -45,19 +49,38 @@ public class StorefrontSearchService {
         boolean hasCategory = categoryId != null;
 
         if (hasKeyword && hasCategory) {
-            return storefrontProductSearchRepository.findByProductStatusNotAndTitleContainingIgnoreCaseAndCategoryId(
-                "deleted",
+            return storefrontProductSearchRepository.findByProductStatusNotAndPublishStatusAndAuditStatusAndTitleContainingIgnoreCaseAndCategoryId(
+                DELETED_STATUS,
+                PUBLISHED_STATUS,
+                APPROVED_STATUS,
                 effectiveKeyword,
                 categoryId,
                 pageable
             );
         }
         if (hasKeyword) {
-            return storefrontProductSearchRepository.findByProductStatusNotAndTitleContainingIgnoreCase("deleted", effectiveKeyword, pageable);
+            return storefrontProductSearchRepository.findByProductStatusNotAndPublishStatusAndAuditStatusAndTitleContainingIgnoreCase(
+                DELETED_STATUS,
+                PUBLISHED_STATUS,
+                APPROVED_STATUS,
+                effectiveKeyword,
+                pageable
+            );
         }
         if (hasCategory) {
-            return storefrontProductSearchRepository.findByProductStatusNotAndCategoryId("deleted", categoryId, pageable);
+            return storefrontProductSearchRepository.findByProductStatusNotAndPublishStatusAndAuditStatusAndCategoryId(
+                DELETED_STATUS,
+                PUBLISHED_STATUS,
+                APPROVED_STATUS,
+                categoryId,
+                pageable
+            );
         }
-        return storefrontProductSearchRepository.findByProductStatusNot("deleted", pageable);
+        return storefrontProductSearchRepository.findByProductStatusNotAndPublishStatusAndAuditStatus(
+            DELETED_STATUS,
+            PUBLISHED_STATUS,
+            APPROVED_STATUS,
+            pageable
+        );
     }
 }

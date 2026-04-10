@@ -6,6 +6,7 @@ import com.example.ecommerce.pricing.domain.PriceScheduleRepository;
 import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
+import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,9 @@ class PriceScheduleJobTest {
     @Autowired
     private ProductSpuRepository productSpuRepository;
 
+    @Autowired
+    private ProductWorkflowHistoryRepository productWorkflowHistoryRepository;
+
     private Long skuId;
     private Long dueScheduleId;
     private Long futureScheduleId;
@@ -38,6 +42,7 @@ class PriceScheduleJobTest {
     void setUp() {
         priceScheduleRepository.deleteAll();
         priceHistoryRepository.deleteAll();
+        productWorkflowHistoryRepository.deleteAll();
         productSpuRepository.deleteAll();
 
         ProductSpuEntity spu = ProductSpuEntity.draft(2001L, "SPU-PRC-JOB-1", "pricing-job-demo", 33L);
