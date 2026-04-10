@@ -27,14 +27,20 @@ class AdminProductControllerTest {
     void creates_product_and_reads_it_back() throws Exception {
         ProductCreateRequest request = ProductCreateRequest.sample();
 
-        mockMvc.perform(post("/admin/products")
+        var createResult = mockMvc.perform(post("/admin/products")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.success").value(true));
+            .andExpect(jsonPath("$.success").value(true))
+            .andReturn();
 
-        mockMvc.perform(get("/admin/products/1"))
+        long productId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+            .path("data")
+            .path("id")
+            .asLong();
+
+        mockMvc.perform(get("/admin/products/{productId}", productId))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.title").value("男士连帽卫衣"));
+            .andExpect(jsonPath("$.data.title").value(request.title()));
     }
 }

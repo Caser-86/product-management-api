@@ -3,8 +3,13 @@ package com.example.ecommerce.inventory.application;
 import com.example.ecommerce.inventory.domain.InventoryBalanceRepository;
 import com.example.ecommerce.inventory.domain.InventoryReservationEntity;
 import com.example.ecommerce.inventory.domain.InventoryReservationRepository;
+import com.example.ecommerce.inventory.api.InventoryReservationRequest;
+import com.example.ecommerce.shared.api.BusinessException;
+import com.example.ecommerce.shared.api.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 public class InventoryService {
@@ -21,23 +26,46 @@ public class InventoryService {
     }
 
     @Transactional
-    public String reserve(Long skuId, int quantity, String bizId) {
-        var balance = inventoryBalanceRepository.findById(skuId)
-            .orElseThrow(() -> new IllegalArgumentException("inventory not found"));
-        if (balance.getAvailableQty() < quantity) {
-            throw new IllegalArgumentException("inventory insufficient");
+    public String reserve(String reservationId, String bizId, List<InventoryReservationRequest.Item> items) {
+        if (reservationId == null || reservationId.isBlank()) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "idempotencyKey is required");
         }
-        balance.reserve(quantity);
-        inventoryReservationRepository.save(InventoryReservationEntity.reserved(bizId, bizId, skuId, quantity));
-        return bizId;
+        if (bizId == null || bizId.isBlank()) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "bizId is required");
+        }
+        if (items == null || items.isEmpty()) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "reservation items are required");
+        }
+        if (items.size() != 1) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "single-item reservation only");
+        }
+
+        var existingReservation = inventoryReservationRepository.findById(reservationId)
+            .or(() -> inventoryReservationRepository.findByBizId(bizId));
+        if (existingReservation.isPresent()) {
+            return existingReservation.get().getId();
+        }
+
+        InventoryReservationRequest.Item item = items.get(0);
+        var balance = inventoryBalanceRepository.findById(item.skuId())
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        balance.reserve(item.quantity());
+        inventoryReservationRepository.save(InventoryReservationEntity.reserved(reservationId, bizId, item.skuId(), item.quantity()));
+        return reservationId;
     }
 
     @Transactional
-    public void confirm(String reservationId) {
+    public void confirm(String reservationId, String bizId) {
         var reservation = inventoryReservationRepository.findById(reservationId)
-            .orElseThrow(() -> new IllegalArgumentException("reservation not found"));
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "reservation not found"));
+        if (!reservation.hasBizId(bizId)) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "reservation bizId mismatch");
+        }
+        if (reservation.isConfirmed()) {
+            return;
+        }
         var balance = inventoryBalanceRepository.findById(reservation.getSkuId())
-            .orElseThrow(() -> new IllegalArgumentException("inventory not found"));
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
         balance.confirm(reservation.getQuantity());
         reservation.confirm();
     }

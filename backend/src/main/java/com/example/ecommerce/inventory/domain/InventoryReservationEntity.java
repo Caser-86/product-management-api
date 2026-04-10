@@ -47,8 +47,20 @@ public class InventoryReservationEntity {
         return skuId;
     }
 
+    public String getId() {
+        return id;
+    }
+
     public int getQuantity() {
         return quantity;
+    }
+
+    public boolean hasBizId(String bizId) {
+        return this.bizId.equals(bizId);
+    }
+
+    public boolean isConfirmed() {
+        return "confirmed".equals(status);
     }
 
     public void confirm() {

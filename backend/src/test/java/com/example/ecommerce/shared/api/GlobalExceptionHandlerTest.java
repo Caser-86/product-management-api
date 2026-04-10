@@ -7,9 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
-import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Set;
 
@@ -68,5 +68,19 @@ class GlobalExceptionHandlerTest {
                     """))
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("PRICE_SALE_GREATER_THAN_LIST"));
+    }
+
+    @Test
+    void returns_request_body_validation_error_payload() throws Exception {
+        mockMvc.perform(patch("/admin/skus/1/prices")
+                .contentType("application/json")
+                .content("""
+                    {
+                      "salePrice": 200.0
+                    }
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COMMON_VALIDATION_FAILED"))
+            .andExpect(jsonPath("$.message").value("listPrice is required"));
     }
 }

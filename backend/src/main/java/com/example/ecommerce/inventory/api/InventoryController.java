@@ -21,8 +21,7 @@ public class InventoryController {
 
     @PostMapping("/inventory/reservations")
     public ApiResponse<Map<String, Object>> reserve(@RequestBody InventoryReservationRequest request) {
-        var item = request.items().get(0);
-        String reservationId = inventoryService.reserve(item.skuId(), item.quantity(), request.bizId());
+        String reservationId = inventoryService.reserve(request.idempotencyKey(), request.bizId(), request.items());
         return ApiResponse.success(Map.of("reservationId", reservationId, "status", "reserved"));
     }
 
@@ -31,7 +30,7 @@ public class InventoryController {
         @PathVariable String reservationId,
         @RequestBody InventoryReservationConfirmRequest request
     ) {
-        inventoryService.confirm(reservationId);
+        inventoryService.confirm(reservationId, request.bizId());
         return ApiResponse.success(null);
     }
 

@@ -4,6 +4,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import com.example.ecommerce.shared.api.BusinessException;
+import com.example.ecommerce.shared.api.ErrorCode;
 
 @Entity
 @Table(name = "inventory_balance")
@@ -28,6 +31,10 @@ public class InventoryBalanceEntity {
     @Column(name = "sold_qty", nullable = false)
     private int soldQty;
 
+    @Version
+    @Column(nullable = false)
+    private long version;
+
     protected InventoryBalanceEntity() {
     }
 
@@ -51,11 +58,23 @@ public class InventoryBalanceEntity {
     }
 
     public void reserve(int quantity) {
+        if (quantity <= 0) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "reservation quantity must be positive");
+        }
+        if (availableQty < quantity) {
+            throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT, "inventory insufficient");
+        }
         this.availableQty -= quantity;
         this.reservedQty += quantity;
     }
 
     public void confirm(int quantity) {
+        if (quantity <= 0) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "confirmation quantity must be positive");
+        }
+        if (reservedQty < quantity) {
+            throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT, "reserved inventory insufficient");
+        }
         this.reservedQty -= quantity;
         this.soldQty += quantity;
     }

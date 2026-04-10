@@ -4,8 +4,10 @@ import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -37,6 +39,16 @@ public class GlobalExceptionHandler {
             .body(new ApiResponse<>(false, ErrorCode.COMMON_VALIDATION_FAILED.name(), message, null));
     }
 
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult().getAllErrors().stream()
+            .findFirst()
+            .map(error -> error.getDefaultMessage() == null ? "validation failed" : error.getDefaultMessage())
+            .orElse("validation failed");
+        return ResponseEntity.badRequest()
+            .body(new ApiResponse<>(false, ErrorCode.COMMON_VALIDATION_FAILED.name(), message, null));
+    }
+
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(ConstraintViolationException ex) {
         String message = ex.getConstraintViolations().stream()
@@ -45,5 +57,11 @@ public class GlobalExceptionHandler {
             .orElse("validation failed");
         return ResponseEntity.badRequest()
             .body(new ApiResponse<>(false, ErrorCode.COMMON_VALIDATION_FAILED.name(), message, null));
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOptimisticLockingFailureException(ObjectOptimisticLockingFailureException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+            .body(new ApiResponse<>(false, ErrorCode.COMMON_VERSION_CONFLICT.name(), "version conflict", null));
     }
 }

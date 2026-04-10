@@ -7,6 +7,9 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "price_history")
 public class PriceHistoryEntity {
@@ -36,22 +39,57 @@ public class PriceHistoryEntity {
     @Column(name = "operator_id")
     private Long operatorId;
 
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+
     protected PriceHistoryEntity() {
     }
 
-    public static PriceHistoryEntity manual(Long skuId, Double listPrice, Double salePrice, String reason, Long operatorId) {
+    public static PriceHistoryEntity manual(
+        Long skuId,
+        Long merchantId,
+        String oldPriceJson,
+        BigDecimal listPrice,
+        BigDecimal salePrice,
+        String reason,
+        Long operatorId
+    ) {
         PriceHistoryEntity entity = new PriceHistoryEntity();
         entity.skuId = skuId;
-        entity.merchantId = 2001L;
+        entity.merchantId = merchantId;
         entity.changeType = "manual";
-        entity.oldPriceJson = "{}";
-        entity.newPriceJson = "{\"listPrice\":" + listPrice + ",\"salePrice\":" + salePrice + "}";
+        entity.oldPriceJson = oldPriceJson;
+        entity.newPriceJson = priceJson(listPrice, salePrice);
         entity.reason = reason;
         entity.operatorId = operatorId;
         return entity;
     }
 
+    public static String priceJson(BigDecimal listPrice, BigDecimal salePrice) {
+        return "{\"listPrice\":" + listPrice.toPlainString() + ",\"salePrice\":" + salePrice.toPlainString() + "}";
+    }
+
+    public String getChangeType() {
+        return changeType;
+    }
+
+    public String getOldPriceJson() {
+        return oldPriceJson;
+    }
+
+    public String getNewPriceJson() {
+        return newPriceJson;
+    }
+
     public String getReason() {
         return reason;
+    }
+
+    public Long getOperatorId() {
+        return operatorId;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 }

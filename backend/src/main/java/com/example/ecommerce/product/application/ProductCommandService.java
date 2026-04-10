@@ -8,10 +8,15 @@ import com.example.ecommerce.product.api.ProductResponse;
 import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
+import com.example.ecommerce.shared.api.BusinessException;
+import com.example.ecommerce.shared.api.ErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductCommandService {
@@ -37,9 +42,13 @@ public class ProductCommandService {
             spu.addSku(ProductSkuEntity.of(request.merchantId(), sku.skuCode(), sku.specSnapshot(), sku.specHash()))
         );
         ProductSpuEntity saved = spuRepository.save(spu);
-        for (int i = 0; i < saved.getSkus().size(); i++) {
-            ProductSkuEntity sku = saved.getSkus().get(i);
-            int initialStock = request.skus().get(i).initialStock();
+        Map<String, Integer> initialStockBySkuCode = request.skus().stream()
+            .collect(Collectors.toMap(ProductCreateRequest.SkuInput::skuCode, ProductCreateRequest.SkuInput::initialStock));
+        for (ProductSkuEntity sku : saved.getSkus()) {
+            Integer initialStock = initialStockBySkuCode.get(sku.getSkuCode());
+            if (initialStock == null) {
+                throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "initial stock missing for sku");
+            }
             inventoryBalanceRepository.save(InventoryBalanceEntity.initial(sku.getId(), sku.getMerchantId(), initialStock));
         }
         return new ProductResponse(saved.getId(), saved.getTitle(), saved.getMerchantId(), saved.getCategoryId());
@@ -48,17 +57,18 @@ public class ProductCommandService {
     @Transactional(readOnly = true)
     public ProductResponse get(Long productId) {
         ProductSpuEntity spu = spuRepository.findWithSkusById(productId)
-            .orElseThrow(() -> new IllegalArgumentException("product not found"));
+            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found"));
         return new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId());
     }
 
     @Transactional(readOnly = true)
     public ProductListResponse list(Long merchantId, int page, int pageSize) {
-        var pageResult = spuRepository.findAll(org.springframework.data.domain.PageRequest.of(page - 1, pageSize));
+        int safePage = Math.max(page, 1);
+        int safePageSize = Math.max(pageSize, 1);
+        var pageResult = spuRepository.findByMerchantId(merchantId, org.springframework.data.domain.PageRequest.of(safePage - 1, safePageSize));
         var items = pageResult.getContent().stream()
-            .filter(spu -> spu.getMerchantId().equals(merchantId))
             .map(spu -> new ProductResponse(spu.getId(), spu.getTitle(), spu.getMerchantId(), spu.getCategoryId()))
             .toList();
-        return new ProductListResponse(items, page, pageSize, pageResult.getTotalElements());
+        return new ProductListResponse(items, safePage, safePageSize, pageResult.getTotalElements());
     }
 }

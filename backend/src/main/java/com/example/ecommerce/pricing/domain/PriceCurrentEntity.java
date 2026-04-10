@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 
 import java.math.BigDecimal;
 
@@ -30,6 +31,10 @@ public class PriceCurrentEntity {
     @Column(name = "cost_price")
     private BigDecimal costPrice;
 
+    @Version
+    @Column(nullable = false)
+    private long version;
+
     protected PriceCurrentEntity() {
     }
 
@@ -41,5 +46,17 @@ public class PriceCurrentEntity {
         entity.listPrice = listPrice;
         entity.salePrice = salePrice;
         return entity;
+    }
+
+    public Long getMerchantId() {
+        return merchantId;
+    }
+
+    public BigDecimal getListPrice() {
+        return listPrice;
+    }
+
+    public BigDecimal getSalePrice() {
+        return salePrice;
     }
 }

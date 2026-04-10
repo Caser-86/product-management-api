@@ -65,4 +65,8 @@ public class ProductSkuEntity {
     public Long getMerchantId() {
         return merchantId;
     }
+
+    public String getSkuCode() {
+        return skuCode;
+    }
 }

@@ -2,6 +2,7 @@ package com.example.ecommerce.pricing.api;
 
 import com.example.ecommerce.pricing.application.PricingService;
 import com.example.ecommerce.shared.api.ApiResponse;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,7 +21,7 @@ public class PricingController {
     }
 
     @PatchMapping("/admin/skus/{skuId}/prices")
-    public ApiResponse<Void> update(@PathVariable Long skuId, @RequestBody PriceUpdateRequest request) {
+    public ApiResponse<Void> update(@PathVariable Long skuId, @Valid @RequestBody PriceUpdateRequest request) {
         pricingService.updatePrice(skuId, request);
         return ApiResponse.success(null);
     }
