@@ -34,3 +34,7 @@ See [`backend/README.md`](D:\Program Files\product-management-api\backend\README
 - Docker Compose startup
 - Swagger UI and OpenAPI URLs
 - environment variable configuration
+
+## License
+
+All rights reserved. See [`LICENSE`](D:\Program Files\product-management-api\LICENSE).
