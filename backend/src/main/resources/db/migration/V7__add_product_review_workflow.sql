@@ -1,10 +1,9 @@
-ALTER TABLE product_spu
-    ADD COLUMN audit_comment VARCHAR(500) NULL,
-    ADD COLUMN audit_by BIGINT NULL,
-    ADD COLUMN audit_at DATETIME NULL,
-    ADD COLUMN submitted_at DATETIME NULL,
-    ADD COLUMN published_at DATETIME NULL,
-    ADD COLUMN published_by BIGINT NULL;
+ALTER TABLE product_spu ADD COLUMN audit_comment VARCHAR(500) NULL;
+ALTER TABLE product_spu ADD COLUMN audit_by BIGINT NULL;
+ALTER TABLE product_spu ADD COLUMN audit_at DATETIME NULL;
+ALTER TABLE product_spu ADD COLUMN submitted_at DATETIME NULL;
+ALTER TABLE product_spu ADD COLUMN published_at DATETIME NULL;
+ALTER TABLE product_spu ADD COLUMN published_by BIGINT NULL;
 
 CREATE TABLE product_workflow_history (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
