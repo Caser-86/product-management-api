@@ -1,0 +1,7 @@
+.idea/
+.worktrees/
+worktrees/
+build/
+.gradle/
+out/
+*.log
