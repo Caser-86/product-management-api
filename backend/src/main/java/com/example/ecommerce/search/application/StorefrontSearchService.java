@@ -15,6 +15,7 @@ import java.util.List;
 
 @Service
 public class StorefrontSearchService {
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final StorefrontProductSearchRepository storefrontProductSearchRepository;
 
@@ -28,12 +29,13 @@ public class StorefrontSearchService {
         Long categoryId,
         BigDecimal minPrice,
         BigDecimal maxPrice,
+        Boolean inStockOnly,
         String sort,
         int page,
         int pageSize
     ) {
         int safePage = Math.max(page, 1);
-        int safePageSize = Math.max(pageSize, 1);
+        int safePageSize = Math.min(Math.max(pageSize, 1), MAX_PAGE_SIZE);
         validatePriceRange(minPrice, maxPrice);
         StorefrontSearchSort storefrontSearchSort = StorefrontSearchSort.parse(sort);
         PageRequest pageable = PageRequest.of(safePage - 1, safePageSize);
@@ -42,6 +44,7 @@ public class StorefrontSearchService {
             categoryId,
             minPrice,
             maxPrice,
+            inStockOnly,
             storefrontSearchSort,
             pageable
         );

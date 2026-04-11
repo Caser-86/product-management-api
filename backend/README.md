@@ -183,6 +183,9 @@ Supported query parameters:
 - `minPrice`
 - `maxPrice`
 - `sort`
+- `inStockOnly`
+
+Storefront `pageSize` is clamped to a maximum of `100`.
 
 Supported sort values:
 

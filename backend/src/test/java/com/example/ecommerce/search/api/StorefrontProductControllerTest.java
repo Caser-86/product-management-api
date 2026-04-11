@@ -190,6 +190,102 @@ class StorefrontProductControllerTest {
     }
 
     @Test
+    void filters_to_only_in_stock_products() throws Exception {
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            3001L,
+            2001L,
+            33L,
+            "stock-hoodie",
+            40001L,
+            new BigDecimal("99.00"),
+            new BigDecimal("149.00"),
+            5,
+            "in_stock",
+            "active",
+            "published",
+            "approved"
+        ));
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            3002L,
+            2001L,
+            33L,
+            "stock-jacket",
+            40002L,
+            new BigDecimal("129.00"),
+            new BigDecimal("199.00"),
+            0,
+            "out_of_stock",
+            "active",
+            "published",
+            "approved"
+        ));
+
+        mockMvc.perform(get("/products").param("inStockOnly", "true"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.total").value(1))
+            .andExpect(jsonPath("$.data.items[0].title").value("stock-hoodie"));
+    }
+
+    @Test
+    void clamps_page_size_to_maximum() throws Exception {
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            3003L,
+            2001L,
+            33L,
+            "page-a",
+            40003L,
+            new BigDecimal("49.00"),
+            new BigDecimal("79.00"),
+            3,
+            "in_stock",
+            "active",
+            "published",
+            "approved"
+        ));
+
+        mockMvc.perform(get("/products").param("pageSize", "999"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.pageSize").value(100));
+    }
+
+    @Test
+    void keeps_price_sort_stable_when_prices_tie() throws Exception {
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            3004L,
+            2001L,
+            33L,
+            "tie-first",
+            40004L,
+            new BigDecimal("88.00"),
+            new BigDecimal("120.00"),
+            4,
+            "in_stock",
+            "active",
+            "published",
+            "approved"
+        ));
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            3005L,
+            2001L,
+            33L,
+            "tie-second",
+            40005L,
+            new BigDecimal("88.00"),
+            new BigDecimal("140.00"),
+            4,
+            "in_stock",
+            "active",
+            "published",
+            "approved"
+        ));
+
+        mockMvc.perform(get("/products").param("sort", "price_asc"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[0].productId").value(3005))
+            .andExpect(jsonPath("$.data.items[1].productId").value(3004));
+    }
+
+    @Test
     void excludes_non_visible_projection_rows() throws Exception {
         storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
             1002L,
