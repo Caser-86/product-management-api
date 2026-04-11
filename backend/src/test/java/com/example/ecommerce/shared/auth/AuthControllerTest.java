@@ -39,7 +39,7 @@ class AuthControllerTest {
     private MockMvc mockMvc;
 
     @Test
-    void logs_in_with_configured_platform_user() throws Exception {
+    void logs_in_with_default_platform_admin_credentials() throws Exception {
         MvcResult result = mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
