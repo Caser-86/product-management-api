@@ -237,6 +237,16 @@ Workflow behavior:
   `draft` + `pending` + `unpublished` and must be reviewed again
 - Workflow actions are recorded in `product_workflow_history`
 
+Workflow history is available through:
+
+- `GET /admin/products/{productId}/workflow-history`
+
+Workflow history access rules:
+
+- `PLATFORM_ADMIN` can read any product's history
+- `MERCHANT_ADMIN` can read only products from its own merchant
+- deleted products remain readable through the history endpoint for audit purposes
+
 Admin product listing supports workflow-oriented query parameters:
 
 - `status`
@@ -269,5 +279,7 @@ After the application starts, interactive API docs are available at:
 - Auth/ledger/scheduling plan: `docs/superpowers/plans/2026-04-10-auth-ledger-scheduling-implementation-plan.md`
 - Product publish/review spec: `docs/superpowers/specs/2026-04-11-product-publish-review-workflow-design.md`
 - Product publish/review plan: `docs/superpowers/plans/2026-04-11-product-publish-review-workflow-implementation-plan.md`
+- Product workflow history query spec: `docs/superpowers/specs/2026-04-11-product-workflow-history-query-design.md`
+- Product workflow history query plan: `docs/superpowers/plans/2026-04-11-product-workflow-history-query-implementation-plan.md`
 - JWT auth upgrade spec: `docs/superpowers/specs/2026-04-11-jwt-auth-upgrade-design.md`
 - JWT auth upgrade plan: `docs/superpowers/plans/2026-04-11-jwt-auth-upgrade-implementation-plan.md`
