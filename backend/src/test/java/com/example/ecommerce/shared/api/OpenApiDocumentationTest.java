@@ -36,6 +36,8 @@ class OpenApiDocumentationTest {
                 .value("#/components/schemas/ApiResponseInventoryAdjustmentResponse"))
             .andExpect(jsonPath("$.paths['/admin/inventory/refunds'].post.responses['200'].content['*/*'].schema.$ref")
                 .value("#/components/schemas/ApiResponseInventoryRefundResponse"))
+            .andExpect(jsonPath("$.paths['/admin/skus/{skuId}/price-schedules'].get.responses['200'].content['*/*'].schema.$ref")
+                .value("#/components/schemas/ApiResponsePriceScheduleListResponse"))
             .andExpect(jsonPath("$.paths['/admin/skus/{skuId}/price-schedules'].post.responses['200'].content['*/*'].schema.$ref")
                 .value("#/components/schemas/ApiResponsePriceScheduleResponse"));
     }
