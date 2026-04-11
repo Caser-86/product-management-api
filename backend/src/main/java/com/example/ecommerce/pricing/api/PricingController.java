@@ -41,6 +41,19 @@ public class PricingController {
         return ApiResponse.success(pricingService.createSchedule(skuId, request));
     }
 
+    @GetMapping("/admin/skus/{skuId}/price-schedules")
+    @Operation(summary = "List price schedules", description = "Returns scheduled future price changes for a SKU.")
+    public ApiResponse<PriceScheduleListResponse> scheduleList(
+        @Parameter(description = "SKU ID", example = "20001")
+        @PathVariable Long skuId,
+        @Parameter(description = "Page number starting from 1", example = "1")
+        @RequestParam(defaultValue = "1") int page,
+        @Parameter(description = "Page size, maximum 100", example = "20")
+        @RequestParam(defaultValue = "20") int pageSize
+    ) {
+        return ApiResponse.success(pricingService.scheduleList(skuId, page, pageSize));
+    }
+
     @PostMapping("/admin/price-schedules/{scheduleId}/apply")
     @Operation(summary = "Apply price schedule", description = "Applies a due price schedule immediately.")
     public ApiResponse<Void> applySchedule(@PathVariable Long scheduleId) {

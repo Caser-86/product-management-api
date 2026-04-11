@@ -1,6 +1,7 @@
 package com.example.ecommerce.pricing.application;
 
 import com.example.ecommerce.pricing.api.PriceHistoryResponse;
+import com.example.ecommerce.pricing.api.PriceScheduleListResponse;
 import com.example.ecommerce.pricing.api.PriceScheduleRequest;
 import com.example.ecommerce.pricing.api.PriceScheduleResponse;
 import com.example.ecommerce.pricing.api.PriceUpdateRequest;
@@ -103,6 +104,30 @@ public class PricingService {
             ))
             .toList();
         return new PriceHistoryResponse(items, safePage, safePageSize, pageResult.getTotalElements());
+    }
+
+    @Transactional(readOnly = true)
+    public PriceScheduleListResponse scheduleList(Long skuId, int page, int pageSize) {
+        assertSkuScope(skuId);
+        int safePage = Math.max(page, 1);
+        int safePageSize = Math.min(Math.max(pageSize, 1), 100);
+        var pageable = PageRequest.of(
+            safePage - 1,
+            safePageSize,
+            Sort.by(Sort.Order.desc("effectiveAt"), Sort.Order.desc("id"))
+        );
+        var pageResult = priceScheduleRepository.findBySkuId(skuId, pageable);
+        var items = pageResult.getContent().stream()
+            .map(schedule -> new PriceScheduleListResponse.Item(
+                schedule.getId(),
+                schedule.getStatus(),
+                schedule.getEffectiveAt(),
+                schedule.getExpireAt(),
+                parseSchedulePriceSnapshot(schedule.getTargetPriceJson()),
+                schedule.getCreatedAt()
+            ))
+            .toList();
+        return new PriceScheduleListResponse(items, safePage, safePageSize, pageResult.getTotalElements());
     }
 
     @Transactional
@@ -208,6 +233,18 @@ public class PricingService {
             node.path("listPrice").decimalValue(),
             node.path("salePrice").decimalValue()
         );
+    }
+
+    private PriceScheduleListResponse.PriceSnapshot parseSchedulePriceSnapshot(String rawJson) {
+        JsonNode node = parseJson(rawJson);
+        return new PriceScheduleListResponse.PriceSnapshot(
+            decimalNode(node, "listPrice"),
+            decimalNode(node, "salePrice")
+        );
+    }
+
+    private BigDecimal decimalNode(JsonNode node, String field) {
+        return node.hasNonNull(field) ? node.path(field).decimalValue() : null;
     }
 
     private void validatePrice(BigDecimal listPrice, BigDecimal salePrice) {

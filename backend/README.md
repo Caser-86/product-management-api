@@ -185,6 +185,32 @@ Response fields:
 - `scheduleId`
 - `status`
 
+Price schedules can also be listed per SKU:
+
+- `GET /admin/skus/{skuId}/price-schedules?page=1&pageSize=20`
+
+Schedule list metadata includes:
+
+- `page`
+- `pageSize`
+- `total`
+
+Each schedule item returns:
+
+- `scheduleId`
+- `status`
+- `effectiveAt`
+- `expireAt`
+- `targetPrice.listPrice`
+- `targetPrice.salePrice`
+- `createdAt`
+
+Schedule list paging rules:
+
+- default `pageSize` is `20`
+- maximum `pageSize` is `100`
+- results are ordered by `effectiveAt desc, id desc`
+
 ## Reverse Inventory Flows
 
 The API supports two reverse inventory operations:
@@ -363,5 +389,7 @@ After the application starts, interactive API docs are available at:
 - Price history pagination plan: `docs/superpowers/plans/2026-04-11-price-history-pagination-implementation-plan.md`
 - Price schedule response DTO spec: `docs/superpowers/specs/2026-04-11-price-schedule-response-dto-design.md`
 - Price schedule response DTO plan: `docs/superpowers/plans/2026-04-11-price-schedule-response-dto-implementation-plan.md`
+- Price schedule list spec: `docs/superpowers/specs/2026-04-11-price-schedule-list-design.md`
+- Price schedule list plan: `docs/superpowers/plans/2026-04-11-price-schedule-list-implementation-plan.md`
 - JWT auth upgrade spec: `docs/superpowers/specs/2026-04-11-jwt-auth-upgrade-design.md`
 - JWT auth upgrade plan: `docs/superpowers/plans/2026-04-11-jwt-auth-upgrade-implementation-plan.md`

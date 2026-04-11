@@ -77,12 +77,20 @@ public class PriceScheduleEntity {
         return effectiveAt;
     }
 
+    public LocalDateTime getExpireAt() {
+        return expireAt;
+    }
+
     public String getStatus() {
         return status;
     }
 
     public Long getMerchantId() {
         return merchantId;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
     public boolean isPending() {
