@@ -62,12 +62,22 @@ public class AdminProductController {
     public ApiResponse<ProductListResponse> list(
         @Parameter(description = "Merchant ID", example = "2001")
         @RequestParam(required = false) Long merchantId,
+        @Parameter(description = "Product workflow status filter", example = "draft")
+        @RequestParam(required = false) String status,
+        @Parameter(description = "Audit status filter", example = "pending")
+        @RequestParam(required = false) String auditStatus,
+        @Parameter(description = "Publish status filter", example = "published")
+        @RequestParam(required = false) String publishStatus,
+        @Parameter(description = "Case-insensitive title keyword search", example = "hoodie")
+        @RequestParam(required = false) String keyword,
+        @Parameter(description = "Sort order: created_desc, title_asc, or title_desc", example = "title_asc")
+        @RequestParam(required = false) String sort,
         @Parameter(description = "Page number, starting from 1", example = "1")
         @RequestParam(defaultValue = "1") int page,
         @Parameter(description = "Page size", example = "20")
         @RequestParam(defaultValue = "20") int pageSize
     ) {
-        return ApiResponse.success(productCommandService.list(merchantId, page, pageSize));
+        return ApiResponse.success(productCommandService.list(merchantId, status, auditStatus, publishStatus, keyword, sort, page, pageSize));
     }
 
     @PostMapping("/{productId}/submit-for-review")

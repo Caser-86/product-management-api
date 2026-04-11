@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
-public interface ProductSpuRepository extends JpaRepository<ProductSpuEntity, Long> {
+public interface ProductSpuRepository extends JpaRepository<ProductSpuEntity, Long>, AdminProductListQueryRepository {
 
     @EntityGraph(attributePaths = "skus")
     Optional<ProductSpuEntity> findWithSkusById(Long id);
