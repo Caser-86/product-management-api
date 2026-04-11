@@ -99,6 +99,18 @@ Default local accounts come from `application.yml`:
 - `platform-admin / platform-secret`
 - `merchant-admin / merchant-secret`
 
+## Auth Identities
+
+Login accounts are stored in the database and seeded during Flyway migration.
+
+Default local users:
+
+- `platform-admin / platform-secret`
+- `merchant-admin / merchant-secret`
+
+The login API remains `POST /auth/login`, but credentials no longer come from
+`application.yml`.
+
 Supported roles:
 
 - `PLATFORM_ADMIN`: can operate across merchants
