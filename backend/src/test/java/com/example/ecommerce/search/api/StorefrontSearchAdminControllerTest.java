@@ -70,6 +70,7 @@ class StorefrontSearchAdminControllerTest {
         Long productId = createStorefrontVisibleProduct();
 
         productSearchProjector.refresh(productId);
+        assertThat(storefrontProductSearchRepository.findById(productId)).isPresent();
         storefrontProductSearchRepository.deleteById(productId);
         assertThat(storefrontProductSearchRepository.findById(productId)).isEmpty();
 
