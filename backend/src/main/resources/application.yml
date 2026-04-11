@@ -22,3 +22,21 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+
+app:
+  auth:
+    jwt:
+      issuer: ${APP_AUTH_JWT_ISSUER:product-management-api}
+      secret: ${APP_AUTH_JWT_SECRET:change-me-for-local-development-only}
+      access-token-ttl-minutes: ${APP_AUTH_JWT_ACCESS_TOKEN_TTL_MINUTES:60}
+    users:
+      - username: platform-admin
+        password: platform-secret
+        user-id: 9001
+        role: PLATFORM_ADMIN
+        merchant-id: 2001
+      - username: merchant-admin
+        password: merchant-secret
+        user-id: 9002
+        role: MERCHANT_ADMIN
+        merchant-id: 2001

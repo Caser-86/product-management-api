@@ -9,6 +9,7 @@ import com.example.ecommerce.pricing.domain.PriceScheduleRepository;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
 import com.example.ecommerce.search.domain.StorefrontProductSearchRepository;
+import com.example.ecommerce.support.AuthTestTokens;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,9 +17,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -27,12 +30,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 class ProductManagementFlowTest {
-
-    private static final String USER_ID_HEADER = "X-User-Id";
-    private static final String ROLE_HEADER = "X-Role";
-    private static final String MERCHANT_ID_HEADER = "X-Merchant-Id";
 
     @Autowired
     private MockMvc mockMvc;
@@ -67,6 +66,9 @@ class ProductManagementFlowTest {
     @Autowired
     private InventoryReservationRepository inventoryReservationRepository;
 
+    @Autowired
+    private AuthTestTokens authTestTokens;
+
     @BeforeEach
     void setUp() {
         productWorkflowHistoryRepository.deleteAll();
@@ -86,10 +88,7 @@ class ProductManagementFlowTest {
         String productTitle = "flow-hoodie-" + suffix;
         String idempotencyKey = "order-" + suffix + "-attempt-1";
         String bizId = "ORDER-" + suffix;
-        MvcResult createResult = mockMvc.perform(post("/admin/products")
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        MvcResult createResult = mockMvc.perform(withBearer(post("/admin/products"), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -118,10 +117,7 @@ class ProductManagementFlowTest {
             .get(0)
             .getId();
 
-        MvcResult reserveResult = mockMvc.perform(post("/inventory/reservations")
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        MvcResult reserveResult = mockMvc.perform(withBearer(post("/inventory/reservations"), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -138,20 +134,14 @@ class ProductManagementFlowTest {
             .path("reservationId")
             .asText();
 
-        mockMvc.perform(post("/inventory/reservations/{reservationId}/confirm", reservationId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(post("/inventory/reservations/{reservationId}/confirm", reservationId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"bizId":"%s","operatorType":"system"}
                     """.formatted(bizId)))
             .andExpect(status().isOk());
 
-        mockMvc.perform(patch("/admin/skus/{skuId}/prices", skuId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(patch("/admin/skus/{skuId}/prices", skuId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -163,10 +153,7 @@ class ProductManagementFlowTest {
                     """))
             .andExpect(status().isOk());
 
-        mockMvc.perform(post("/admin/products/{productId}/submit-for-review", productId)
-                .header(USER_ID_HEADER, "9101")
-                .header(ROLE_HEADER, "MERCHANT_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/submit-for-review", productId), merchantAdminToken(9101L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -177,10 +164,7 @@ class ProductManagementFlowTest {
             .andExpect(jsonPath("$.data.auditStatus").value("pending"))
             .andExpect(jsonPath("$.data.publishStatus").value("unpublished"));
 
-        mockMvc.perform(post("/admin/products/{productId}/approve", productId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/approve", productId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -191,10 +175,7 @@ class ProductManagementFlowTest {
             .andExpect(jsonPath("$.data.auditStatus").value("approved"))
             .andExpect(jsonPath("$.data.publishStatus").value("unpublished"));
 
-        mockMvc.perform(post("/admin/products/{productId}/publish", productId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/publish", productId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -211,5 +192,17 @@ class ProductManagementFlowTest {
             .andExpect(jsonPath("$.data.items[0].title").value(productTitle))
             .andExpect(jsonPath("$.data.items[0].minPrice").value(149.0))
             .andExpect(jsonPath("$.data.items[0].stockStatus").value("in_stock"));
+    }
+
+    private String platformAdminToken(long userId, long merchantId) {
+        return authTestTokens.platformAdminToken(userId, merchantId);
+    }
+
+    private String merchantAdminToken(long userId, long merchantId) {
+        return authTestTokens.merchantAdminToken(userId, merchantId);
+    }
+
+    private MockHttpServletRequestBuilder withBearer(MockHttpServletRequestBuilder requestBuilder, String token) {
+        return requestBuilder.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
     }
 }

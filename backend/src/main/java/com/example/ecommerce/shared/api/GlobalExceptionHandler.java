@@ -15,7 +15,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
         HttpStatus status = switch (ex.getErrorCode()) {
-            case AUTH_UNAUTHENTICATED, AUTH_INVALID_ROLE -> HttpStatus.UNAUTHORIZED;
+            case AUTH_UNAUTHENTICATED, AUTH_INVALID_CREDENTIALS, AUTH_INVALID_ROLE -> HttpStatus.UNAUTHORIZED;
             case AUTH_MERCHANT_SCOPE_DENIED -> HttpStatus.FORBIDDEN;
             case COMMON_VERSION_CONFLICT, INVENTORY_VERSION_CONFLICT, PRICE_SCHEDULE_CONFLICT -> HttpStatus.CONFLICT;
             case PRODUCT_NOT_FOUND -> HttpStatus.NOT_FOUND;

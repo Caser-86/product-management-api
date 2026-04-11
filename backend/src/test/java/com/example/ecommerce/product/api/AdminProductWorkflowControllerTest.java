@@ -4,13 +4,16 @@ import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryEntity;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
+import com.example.ecommerce.support.AuthTestTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.time.LocalDateTime;
 
@@ -20,12 +23,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 class AdminProductWorkflowControllerTest {
-
-    private static final String USER_ID_HEADER = "X-User-Id";
-    private static final String ROLE_HEADER = "X-Role";
-    private static final String MERCHANT_ID_HEADER = "X-Merchant-Id";
 
     @Autowired
     private MockMvc mockMvc;
@@ -35,6 +34,9 @@ class AdminProductWorkflowControllerTest {
 
     @Autowired
     private ProductWorkflowHistoryRepository workflowHistoryRepository;
+
+    @Autowired
+    private AuthTestTokens authTestTokens;
 
     @BeforeEach
     void setUp() {
@@ -46,10 +48,7 @@ class AdminProductWorkflowControllerTest {
     void platform_admin_can_approve_submitted_product() throws Exception {
         long productId = createSubmittedProduct(2001L);
 
-        mockMvc.perform(post("/admin/products/{productId}/approve", productId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/approve", productId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -83,10 +82,7 @@ class AdminProductWorkflowControllerTest {
     void merchant_admin_cannot_approve_product() throws Exception {
         long productId = createSubmittedProduct(3001L);
 
-        mockMvc.perform(post("/admin/products/{productId}/approve", productId)
-                .header(USER_ID_HEADER, "9101")
-                .header(ROLE_HEADER, "MERCHANT_ADMIN")
-                .header(MERCHANT_ID_HEADER, "3001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/approve", productId), merchantAdminToken(9101L, 3001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -103,10 +99,7 @@ class AdminProductWorkflowControllerTest {
             ProductSpuEntity.draft(2001L, "SPU-WF-SUBMIT-P", "submit-product", 66L)
         ).getId();
 
-        mockMvc.perform(post("/admin/products/{productId}/submit-for-review", productId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/submit-for-review", productId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -123,10 +116,7 @@ class AdminProductWorkflowControllerTest {
             ProductSpuEntity.draft(5001L, "SPU-WF-SUBMIT-M", "submit-product", 66L)
         ).getId();
 
-        mockMvc.perform(post("/admin/products/{productId}/submit-for-review", productId)
-                .header(USER_ID_HEADER, "9002")
-                .header(ROLE_HEADER, "MERCHANT_ADMIN")
-                .header(MERCHANT_ID_HEADER, "3001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/submit-for-review", productId), merchantAdminToken(9002L, 3001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -141,10 +131,7 @@ class AdminProductWorkflowControllerTest {
     void merchant_submit_for_review_writes_workflow_history() throws Exception {
         long productId = createDraftProduct(3001L, "SPU-WF-HIST-SUBMIT");
 
-        mockMvc.perform(post("/admin/products/{productId}/submit-for-review", productId)
-                .header(USER_ID_HEADER, "9102")
-                .header(ROLE_HEADER, "MERCHANT_ADMIN")
-                .header(MERCHANT_ID_HEADER, "3001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/submit-for-review", productId), merchantAdminToken(9102L, 3001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -173,10 +160,7 @@ class AdminProductWorkflowControllerTest {
     void platform_reject_writes_workflow_history() throws Exception {
         long productId = createSubmittedProduct(3001L);
 
-        mockMvc.perform(post("/admin/products/{productId}/reject", productId)
-                .header(USER_ID_HEADER, "9005")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "3001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/reject", productId), platformAdminToken(9005L, 3001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -206,10 +190,7 @@ class AdminProductWorkflowControllerTest {
     void platform_publish_writes_workflow_history() throws Exception {
         long productId = createApprovedProduct(3001L);
 
-        mockMvc.perform(post("/admin/products/{productId}/publish", productId)
-                .header(USER_ID_HEADER, "9006")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "3001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/publish", productId), platformAdminToken(9006L, 3001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -240,10 +221,7 @@ class AdminProductWorkflowControllerTest {
     void merchant_resubmit_writes_workflow_history() throws Exception {
         long productId = createRejectedProduct(3001L);
 
-        mockMvc.perform(post("/admin/products/{productId}/resubmit-for-review", productId)
-                .header(USER_ID_HEADER, "9103")
-                .header(ROLE_HEADER, "MERCHANT_ADMIN")
-                .header(MERCHANT_ID_HEADER, "3001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/resubmit-for-review", productId), merchantAdminToken(9103L, 3001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -272,10 +250,7 @@ class AdminProductWorkflowControllerTest {
     void platform_unpublish_writes_workflow_history() throws Exception {
         long productId = createPublishedProduct(3001L);
 
-        mockMvc.perform(post("/admin/products/{productId}/unpublish", productId)
-                .header(USER_ID_HEADER, "9007")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "3001")
+        mockMvc.perform(withBearer(post("/admin/products/{productId}/unpublish", productId), platformAdminToken(9007L, 3001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -298,6 +273,18 @@ class AdminProductWorkflowControllerTest {
             "PLATFORM_ADMIN",
             "take down for review"
         );
+    }
+
+    private String platformAdminToken(long userId, long merchantId) {
+        return authTestTokens.platformAdminToken(userId, merchantId);
+    }
+
+    private String merchantAdminToken(long userId, long merchantId) {
+        return authTestTokens.merchantAdminToken(userId, merchantId);
+    }
+
+    private MockHttpServletRequestBuilder withBearer(MockHttpServletRequestBuilder requestBuilder, String token) {
+        return requestBuilder.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
     }
 
     private long createSubmittedProduct(Long merchantId) {

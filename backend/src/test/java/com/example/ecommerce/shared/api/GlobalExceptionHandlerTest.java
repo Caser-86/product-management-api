@@ -4,6 +4,7 @@ import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
+import com.example.ecommerce.support.AuthTestTokens;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
@@ -11,8 +12,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 
@@ -26,12 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 class GlobalExceptionHandlerTest {
-
-    private static final String USER_ID_HEADER = "X-User-Id";
-    private static final String ROLE_HEADER = "X-Role";
-    private static final String MERCHANT_ID_HEADER = "X-Merchant-Id";
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
@@ -43,6 +42,9 @@ class GlobalExceptionHandlerTest {
 
     @Autowired
     private ProductWorkflowHistoryRepository workflowHistoryRepository;
+
+    @Autowired
+    private AuthTestTokens authTestTokens;
 
     private Long skuId;
 
@@ -84,10 +86,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void returns_validation_error_payload() throws Exception {
-        mockMvc.perform(patch("/admin/skus/{skuId}/prices", skuId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(patch("/admin/skus/{skuId}/prices", skuId), platformAdminToken(9001L, 2001L))
                 .contentType("application/json")
                 .content("""
                     {
@@ -101,10 +100,7 @@ class GlobalExceptionHandlerTest {
 
     @Test
     void returns_request_body_validation_error_payload() throws Exception {
-        mockMvc.perform(patch("/admin/skus/{skuId}/prices", skuId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(patch("/admin/skus/{skuId}/prices", skuId), platformAdminToken(9001L, 2001L))
                 .contentType("application/json")
                 .content("""
                     {
@@ -114,5 +110,13 @@ class GlobalExceptionHandlerTest {
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.code").value("COMMON_VALIDATION_FAILED"))
             .andExpect(jsonPath("$.message").value("listPrice is required"));
+    }
+
+    private String platformAdminToken(long userId, long merchantId) {
+        return authTestTokens.platformAdminToken(userId, merchantId);
+    }
+
+    private MockHttpServletRequestBuilder withBearer(MockHttpServletRequestBuilder requestBuilder, String token) {
+        return requestBuilder.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
     }
 }

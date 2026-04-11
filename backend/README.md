@@ -62,15 +62,42 @@ Application defaults come from `application.yml` and can be overridden with:
 - `DB_URL` default: `jdbc:mysql://localhost:3306/ecommerce`
 - `DB_USERNAME` default: `ecommerce`
 - `DB_PASSWORD` default: `ecommerce`
+- `APP_AUTH_JWT_SECRET` default: `change-me-for-local-development-only`
+- `APP_AUTH_JWT_ISSUER` default: `product-management-api`
+- `APP_AUTH_JWT_ACCESS_TOKEN_TTL_MINUTES` default: `60`
 - `pricing.schedule.fixed-delay-ms` default: `30000`
 
 ## Authentication
 
-Protected endpoints require request headers:
+Protected endpoints now require a Bearer token in the `Authorization` header.
+Use the local login endpoint first:
 
-- `X-User-Id`
-- `X-Role`
-- `X-Merchant-Id`
+```powershell
+$body = @{
+  username = 'platform-admin'
+  password = 'platform-secret'
+} | ConvertTo-Json
+
+$token = (Invoke-RestMethod `
+  -Method Post `
+  -Uri 'http://localhost:8080/auth/login' `
+  -ContentType 'application/json' `
+  -Body $body).data.accessToken
+```
+
+Then call protected APIs with:
+
+```powershell
+Invoke-RestMethod `
+  -Method Get `
+  -Uri 'http://localhost:8080/admin/products?merchantId=2001' `
+  -Headers @{ Authorization = "Bearer $token" }
+```
+
+Default local accounts come from `application.yml`:
+
+- `platform-admin / platform-secret`
+- `merchant-admin / merchant-secret`
 
 Supported roles:
 
@@ -78,7 +105,14 @@ Supported roles:
 - `MERCHANT_ADMIN`: restricted to its own merchant data
 
 Anonymous access remains available for storefront read endpoints such as
-`GET /products`.
+`GET /products`, plus OpenAPI docs and `POST /auth/login`.
+
+In Swagger UI:
+
+1. Open `http://localhost:8080/swagger-ui.html`
+2. Call `POST /auth/login` and copy `accessToken`
+3. Click `Authorize`
+4. Paste the token as `Bearer <accessToken>`
 
 ## Scheduling
 
@@ -117,6 +151,7 @@ After the application starts, interactive API docs are available at:
 
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
+- Login endpoint: `POST /auth/login`
 
 ## Documents
 
@@ -128,3 +163,5 @@ After the application starts, interactive API docs are available at:
 - Auth/ledger/scheduling plan: `docs/superpowers/plans/2026-04-10-auth-ledger-scheduling-implementation-plan.md`
 - Product publish/review spec: `docs/superpowers/specs/2026-04-11-product-publish-review-workflow-design.md`
 - Product publish/review plan: `docs/superpowers/plans/2026-04-11-product-publish-review-workflow-implementation-plan.md`
+- JWT auth upgrade spec: `docs/superpowers/specs/2026-04-11-jwt-auth-upgrade-design.md`
+- JWT auth upgrade plan: `docs/superpowers/plans/2026-04-11-jwt-auth-upgrade-implementation-plan.md`
