@@ -86,7 +86,19 @@ class StorefrontSearchAdminControllerTest {
             .andExpect(jsonPath("$.data.productId").value(productId))
             .andExpect(jsonPath("$.data.status").value("refreshed"));
 
-        assertThat(storefrontProductSearchRepository.findById(productId)).isPresent();
+        var row = storefrontProductSearchRepository.findById(productId).orElseThrow();
+        assertThat(row.getTitle()).isEqualTo("search-admin-product");
+        assertThat(row.getMinPrice()).isEqualByComparingTo("129.00");
+        assertThat(row.getMaxPrice()).isEqualByComparingTo("199.00");
+        assertThat(row.getAvailableQty()).isEqualTo(8);
+        assertThat(row.getStockStatus()).isEqualTo("in_stock");
+    }
+
+    @Test
+    void anonymous_cannot_refresh_projection() throws Exception {
+        mockMvc.perform(post("/admin/search/storefront/products/{productId}/refresh", 999L))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
     }
 
     @Test
@@ -106,6 +118,7 @@ class StorefrontSearchAdminControllerTest {
 
         assertThat(storefrontProductSearchRepository.findById(firstProductId)).isPresent();
         assertThat(storefrontProductSearchRepository.findById(secondProductId)).isPresent();
+        assertThat(storefrontProductSearchRepository.findAll()).hasSize(2);
     }
 
     @Test
@@ -129,6 +142,13 @@ class StorefrontSearchAdminControllerTest {
         assertThat(storefrontProductSearchRepository.findById(validProductId)).isPresent();
     }
 
+    @Test
+    void merchant_admin_cannot_rebuild_projection() throws Exception {
+        mockMvc.perform(withBearer(post("/admin/search/storefront/rebuild"), merchantAdminToken()))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("AUTH_FORBIDDEN"));
+    }
+
     private long createStorefrontVisibleProduct() {
         ProductSpuEntity product = ProductSpuEntity.draft(
             2001L,
@@ -150,6 +170,10 @@ class StorefrontSearchAdminControllerTest {
 
     private String platformAdminToken() {
         return authTestTokens.platformAdminToken();
+    }
+
+    private String merchantAdminToken() {
+        return authTestTokens.merchantAdminToken(9002L, 2001L);
     }
 
     private MockHttpServletRequestBuilder withBearer(MockHttpServletRequestBuilder requestBuilder, String token) {

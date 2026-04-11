@@ -3,6 +3,9 @@ package com.example.ecommerce.search.application;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.search.api.StorefrontProjectionRebuildResponse;
 import com.example.ecommerce.search.api.StorefrontProjectionRefreshResponse;
+import com.example.ecommerce.shared.auth.AuthContext;
+import com.example.ecommerce.shared.auth.AuthContextHolder;
+import com.example.ecommerce.shared.auth.AuthRole;
 import com.example.ecommerce.shared.api.BusinessException;
 import com.example.ecommerce.shared.api.ErrorCode;
 import org.springframework.data.domain.Page;
@@ -32,12 +35,13 @@ public class StorefrontSearchAdminService {
 
     @Transactional
     public StorefrontProjectionRefreshResponse refreshProduct(Long productId) {
+        requirePlatformAdmin();
         productSearchProjector.refresh(productId);
         return new StorefrontProjectionRefreshResponse(productId, "refreshed");
     }
 
-    @Transactional
     public StorefrontProjectionRebuildResponse rebuildAll() {
+        requirePlatformAdmin();
         long startedAt = System.currentTimeMillis();
         int processedCount = 0;
         int successCount = 0;
@@ -78,5 +82,12 @@ public class StorefrontSearchAdminService {
             System.currentTimeMillis() - startedAt,
             failures
         );
+    }
+
+    private void requirePlatformAdmin() {
+        AuthContext authContext = AuthContextHolder.getRequired();
+        if (authContext.role() != AuthRole.PLATFORM_ADMIN) {
+            throw new BusinessException(ErrorCode.AUTH_FORBIDDEN, "platform admin role required");
+        }
     }
 }
