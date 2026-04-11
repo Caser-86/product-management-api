@@ -217,6 +217,22 @@ History paging rules:
 - maximum `pageSize` is `100`
 - results are ordered newest first
 
+The remaining inventory write and snapshot endpoints now use typed response
+objects instead of generic maps:
+
+- `POST /inventory/reservations`
+- `POST /inventory/reservations/{reservationId}/release`
+- `GET /admin/skus/{skuId}/inventory`
+- `POST /admin/skus/{skuId}/inventory/adjustments`
+- `POST /admin/inventory/refunds`
+
+Response groups:
+
+- reservation/release: `reservationId`, `status`
+- snapshot: `skuId`, `totalQty`, `availableQty`, `reservedQty`, `soldQty`
+- adjustment: snapshot fields plus `reason`, `operatorId`
+- refund: snapshot fields plus `bizId`, `restock`, `reason`, `operatorId`
+
 ## Storefront Search
 
 `GET /products` reads from the `storefront_product_search` projection table.
@@ -332,6 +348,8 @@ After the application starts, interactive API docs are available at:
 - Product workflow history query plan: `docs/superpowers/plans/2026-04-11-product-workflow-history-query-implementation-plan.md`
 - Inventory history pagination spec: `docs/superpowers/specs/2026-04-11-inventory-history-pagination-design.md`
 - Inventory history pagination plan: `docs/superpowers/plans/2026-04-11-inventory-history-pagination-implementation-plan.md`
+- Inventory response DTO unification spec: `docs/superpowers/specs/2026-04-11-inventory-response-dto-unification-design.md`
+- Inventory response DTO unification plan: `docs/superpowers/plans/2026-04-11-inventory-response-dto-unification-implementation-plan.md`
 - Price history pagination spec: `docs/superpowers/specs/2026-04-11-price-history-pagination-design.md`
 - Price history pagination plan: `docs/superpowers/plans/2026-04-11-price-history-pagination-implementation-plan.md`
 - JWT auth upgrade spec: `docs/superpowers/specs/2026-04-11-jwt-auth-upgrade-design.md`

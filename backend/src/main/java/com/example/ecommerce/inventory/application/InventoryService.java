@@ -1,6 +1,10 @@
 package com.example.ecommerce.inventory.application;
 
+import com.example.ecommerce.inventory.api.InventoryAdjustmentResponse;
+import com.example.ecommerce.inventory.api.InventoryRefundResponse;
+import com.example.ecommerce.inventory.api.InventoryReservationResponse;
 import com.example.ecommerce.inventory.api.InventoryHistoryResponse;
+import com.example.ecommerce.inventory.api.InventorySnapshotResponse;
 import com.example.ecommerce.inventory.domain.InventoryBalanceRepository;
 import com.example.ecommerce.inventory.domain.InventoryLedgerEntity;
 import com.example.ecommerce.inventory.domain.InventoryLedgerRepository;
@@ -19,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 @Service
 public class InventoryService {
@@ -45,7 +48,7 @@ public class InventoryService {
     }
 
     @Transactional
-    public String reserve(String reservationId, String bizId, List<InventoryReservationRequest.Item> items) {
+    public InventoryReservationResponse reserve(String reservationId, String bizId, List<InventoryReservationRequest.Item> items) {
         if (reservationId == null || reservationId.isBlank()) {
             throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "idempotencyKey is required");
         }
@@ -62,7 +65,7 @@ public class InventoryService {
         var existingReservation = inventoryReservationRepository.findById(reservationId)
             .or(() -> inventoryReservationRepository.findByBizId(bizId));
         if (existingReservation.isPresent()) {
-            return existingReservation.get().getId();
+            return new InventoryReservationResponse(existingReservation.get().getId(), existingReservation.get().getStatus());
         }
 
         InventoryReservationRequest.Item item = items.get(0);
@@ -75,7 +78,7 @@ public class InventoryService {
             InventoryLedgerEntity.of(item.skuId(), balance.getMerchantId(), "reserve", bizId, -item.quantity(), item.quantity())
         );
         refreshProjectionBySku(item.skuId());
-        return reservationId;
+        return new InventoryReservationResponse(reservationId, "reserved");
     }
 
     @Transactional
@@ -107,7 +110,7 @@ public class InventoryService {
     }
 
     @Transactional
-    public String release(String reservationId, String bizId) {
+    public InventoryReservationResponse release(String reservationId, String bizId) {
         var reservation = inventoryReservationRepository.findById(reservationId)
             .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "reservation not found"));
         if (!reservation.hasBizId(bizId)) {
@@ -132,25 +135,25 @@ public class InventoryService {
             )
         );
         refreshProjectionBySku(reservation.getSkuId());
-        return reservationId;
+        return new InventoryReservationResponse(reservationId, "released");
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> snapshot(Long skuId) {
+    public InventorySnapshotResponse snapshot(Long skuId) {
         var balance = inventoryBalanceRepository.findById(skuId)
             .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
         assertMerchantScope(balance.getMerchantId());
-        return Map.of(
-            "skuId", skuId,
-            "totalQty", balance.getTotalQty(),
-            "availableQty", balance.getAvailableQty(),
-            "reservedQty", balance.getReservedQty(),
-            "soldQty", balance.getSoldQty()
+        return new InventorySnapshotResponse(
+            skuId,
+            balance.getTotalQty(),
+            balance.getAvailableQty(),
+            balance.getReservedQty(),
+            balance.getSoldQty()
         );
     }
 
     @Transactional
-    public Map<String, Object> adjust(Long skuId, int delta, String reason, Long operatorId) {
+    public InventoryAdjustmentResponse adjust(Long skuId, int delta, String reason, Long operatorId) {
         var balance = inventoryBalanceRepository.findById(skuId)
             .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
         assertMerchantScope(balance.getMerchantId());
@@ -159,19 +162,19 @@ public class InventoryService {
             InventoryLedgerEntity.of(skuId, balance.getMerchantId(), "adjust", reason == null ? "manual-adjust" : reason, delta, 0)
         );
         refreshProjectionBySku(skuId);
-        return Map.of(
-            "skuId", skuId,
-            "totalQty", balance.getTotalQty(),
-            "availableQty", balance.getAvailableQty(),
-            "reservedQty", balance.getReservedQty(),
-            "soldQty", balance.getSoldQty(),
-            "reason", reason == null ? "" : reason,
-            "operatorId", operatorId == null ? 0L : operatorId
+        return new InventoryAdjustmentResponse(
+            skuId,
+            balance.getTotalQty(),
+            balance.getAvailableQty(),
+            balance.getReservedQty(),
+            balance.getSoldQty(),
+            reason == null ? "" : reason,
+            operatorId == null ? 0L : operatorId
         );
     }
 
     @Transactional
-    public Map<String, Object> refund(Long skuId, String bizId, int quantity, boolean restock, String reason, Long operatorId) {
+    public InventoryRefundResponse refund(Long skuId, String bizId, int quantity, boolean restock, String reason, Long operatorId) {
         if (bizId == null || bizId.isBlank()) {
             throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "bizId is required");
         }
@@ -190,16 +193,16 @@ public class InventoryService {
             )
         );
         refreshProjectionBySku(skuId);
-        return Map.of(
-            "skuId", skuId,
-            "totalQty", balance.getTotalQty(),
-            "availableQty", balance.getAvailableQty(),
-            "reservedQty", balance.getReservedQty(),
-            "soldQty", balance.getSoldQty(),
-            "bizId", bizId,
-            "restock", restock,
-            "reason", reason == null ? "" : reason,
-            "operatorId", operatorId == null ? 0L : operatorId
+        return new InventoryRefundResponse(
+            skuId,
+            balance.getTotalQty(),
+            balance.getAvailableQty(),
+            balance.getReservedQty(),
+            balance.getSoldQty(),
+            bizId,
+            restock,
+            reason == null ? "" : reason,
+            operatorId == null ? 0L : operatorId
         );
     }
 

@@ -13,8 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
 @RestController
 @Tag(name = "Inventory", description = "Inventory reservation, confirmation, adjustment, and snapshot endpoints")
 public class InventoryController {
@@ -27,9 +25,8 @@ public class InventoryController {
 
     @PostMapping("/inventory/reservations")
     @Operation(summary = "Reserve inventory", description = "Creates an inventory reservation for an order attempt.")
-    public ApiResponse<Map<String, Object>> reserve(@RequestBody InventoryReservationRequest request) {
-        String reservationId = inventoryService.reserve(request.idempotencyKey(), request.bizId(), request.items());
-        return ApiResponse.success(Map.of("reservationId", reservationId, "status", "reserved"));
+    public ApiResponse<InventoryReservationResponse> reserve(@RequestBody InventoryReservationRequest request) {
+        return ApiResponse.success(inventoryService.reserve(request.idempotencyKey(), request.bizId(), request.items()));
     }
 
     @PostMapping("/inventory/reservations/{reservationId}/confirm")
@@ -45,18 +42,17 @@ public class InventoryController {
 
     @PostMapping("/inventory/reservations/{reservationId}/release")
     @Operation(summary = "Release reservation", description = "Releases a still-reserved inventory reservation back to available stock.")
-    public ApiResponse<Map<String, Object>> release(
+    public ApiResponse<InventoryReservationResponse> release(
         @Parameter(description = "Reservation ID", example = "order-8001-attempt-1")
         @PathVariable String reservationId,
         @Valid @RequestBody InventoryReleaseRequest request
     ) {
-        String releasedReservationId = inventoryService.release(reservationId, request.bizId());
-        return ApiResponse.success(Map.of("reservationId", releasedReservationId, "status", "released"));
+        return ApiResponse.success(inventoryService.release(reservationId, request.bizId()));
     }
 
     @PostMapping("/admin/skus/{skuId}/inventory/adjustments")
     @Operation(summary = "Adjust inventory", description = "Applies a manual stock adjustment to a SKU.")
-    public ApiResponse<Map<String, Object>> adjust(
+    public ApiResponse<InventoryAdjustmentResponse> adjust(
         @Parameter(description = "SKU ID", example = "20001")
         @PathVariable Long skuId,
         @Valid @RequestBody InventoryAdjustmentRequest request
@@ -66,7 +62,7 @@ public class InventoryController {
 
     @GetMapping("/admin/skus/{skuId}/inventory")
     @Operation(summary = "Get inventory snapshot", description = "Returns current inventory counters for a SKU.")
-    public ApiResponse<Map<String, Object>> inventory(@PathVariable Long skuId) {
+    public ApiResponse<InventorySnapshotResponse> inventory(@PathVariable Long skuId) {
         return ApiResponse.success(inventoryService.snapshot(skuId));
     }
 
@@ -85,7 +81,7 @@ public class InventoryController {
 
     @PostMapping("/admin/inventory/refunds")
     @Operation(summary = "Refund inventory", description = "Reverses sold quantity for a SKU and optionally restocks sellable inventory.")
-    public ApiResponse<Map<String, Object>> refund(@Valid @RequestBody InventoryRefundRequest request) {
+    public ApiResponse<InventoryRefundResponse> refund(@Valid @RequestBody InventoryRefundRequest request) {
         return ApiResponse.success(
             inventoryService.refund(
                 request.skuId(),
