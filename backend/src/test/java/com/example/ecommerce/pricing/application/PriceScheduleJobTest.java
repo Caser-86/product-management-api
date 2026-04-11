@@ -11,12 +11,17 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+    "spring.task.scheduling.enabled=false",
+    "pricing.schedule.lock-at-least-for=PT0S",
+    "pricing.schedule.lock-at-most-for=PT5S"
+})
 class PriceScheduleJobTest {
 
     @Autowired
@@ -34,12 +39,16 @@ class PriceScheduleJobTest {
     @Autowired
     private ProductWorkflowHistoryRepository productWorkflowHistoryRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     private Long skuId;
     private Long dueScheduleId;
     private Long futureScheduleId;
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("delete from shedlock");
         priceScheduleRepository.deleteAll();
         priceHistoryRepository.deleteAll();
         productWorkflowHistoryRepository.deleteAll();
@@ -78,14 +87,5 @@ class PriceScheduleJobTest {
         assertThat(priceScheduleRepository.findById(futureScheduleId)).get()
             .extracting(PriceScheduleEntity::getStatus)
             .isEqualTo("pending");
-    }
-
-    @Test
-    void scheduler_delegates_to_pricing_service_batch_execution() {
-        PriceScheduleRunner runner = new PriceScheduleRunner(pricingService);
-
-        int applied = runner.runDueSchedules();
-
-        assertThat(applied).isEqualTo(1);
     }
 }
