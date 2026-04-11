@@ -28,6 +28,9 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -149,6 +152,20 @@ class StorefrontSearchAdminControllerTest {
             .andExpect(jsonPath("$.code").value("AUTH_FORBIDDEN"));
     }
 
+    @Test
+    void rebuild_does_not_make_unpublished_products_visible() throws Exception {
+        Long hiddenProductId = createApprovedUnpublishedProduct();
+        storefrontProductSearchRepository.deleteAll();
+
+        mockMvc.perform(withBearer(post("/admin/search/storefront/rebuild"), platformAdminToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.failureCount").value(0));
+
+        mockMvc.perform(get("/products"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[*].productId").value(not(hasItem(hiddenProductId.intValue()))));
+    }
+
     private long createStorefrontVisibleProduct() {
         ProductSpuEntity product = ProductSpuEntity.draft(
             2001L,
@@ -165,6 +182,24 @@ class StorefrontSearchAdminControllerTest {
         Long skuId = savedProduct.getSkus().get(0).getId();
         priceCurrentRepository.save(PriceCurrentEntity.of(skuId, 2001L, new BigDecimal("199.00"), new BigDecimal("129.00")));
         inventoryBalanceRepository.save(InventoryBalanceEntity.initial(skuId, 2001L, 8));
+        return savedProduct.getId();
+    }
+
+    private long createApprovedUnpublishedProduct() {
+        ProductSpuEntity product = ProductSpuEntity.draft(
+            2001L,
+            "SPU-SEARCH-HIDDEN-" + System.nanoTime(),
+            "search-hidden-product",
+            77L
+        );
+        product.addSku(ProductSkuEntity.of(2001L, "SKU-SEARCH-HIDDEN-" + System.nanoTime(), "{\"size\":\"M\"}", "search-hidden-hash"));
+        product.submitForReview(LocalDateTime.of(2026, 4, 11, 11, 0, 0));
+        product.approve(9001L, "approved but not published", LocalDateTime.of(2026, 4, 11, 11, 10, 0));
+
+        ProductSpuEntity savedProduct = productSpuRepository.save(product);
+        Long skuId = savedProduct.getSkus().get(0).getId();
+        priceCurrentRepository.save(PriceCurrentEntity.of(skuId, 2001L, new BigDecimal("299.00"), new BigDecimal("259.00")));
+        inventoryBalanceRepository.save(InventoryBalanceEntity.initial(skuId, 2001L, 4));
         return savedProduct.getId();
     }
 
