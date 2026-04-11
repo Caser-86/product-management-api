@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
 @RestController
 @Tag(name = "Pricing", description = "Price update, scheduling, and history endpoints")
 public class PricingController {
@@ -35,7 +33,7 @@ public class PricingController {
 
     @PostMapping("/admin/skus/{skuId}/price-schedules")
     @Operation(summary = "Create price schedule", description = "Creates a scheduled future price change for a SKU.")
-    public ApiResponse<Map<String, Object>> createSchedule(
+    public ApiResponse<PriceScheduleResponse> createSchedule(
         @Parameter(description = "SKU ID", example = "20001")
         @PathVariable Long skuId,
         @Valid @RequestBody PriceScheduleRequest request

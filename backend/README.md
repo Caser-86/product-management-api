@@ -176,6 +176,15 @@ History paging rules:
 - maximum `pageSize` is `100`
 - results are ordered newest first
 
+Price schedule creation now returns a typed response object:
+
+- `POST /admin/skus/{skuId}/price-schedules`
+
+Response fields:
+
+- `scheduleId`
+- `status`
+
 ## Reverse Inventory Flows
 
 The API supports two reverse inventory operations:
@@ -352,5 +361,7 @@ After the application starts, interactive API docs are available at:
 - Inventory response DTO unification plan: `docs/superpowers/plans/2026-04-11-inventory-response-dto-unification-implementation-plan.md`
 - Price history pagination spec: `docs/superpowers/specs/2026-04-11-price-history-pagination-design.md`
 - Price history pagination plan: `docs/superpowers/plans/2026-04-11-price-history-pagination-implementation-plan.md`
+- Price schedule response DTO spec: `docs/superpowers/specs/2026-04-11-price-schedule-response-dto-design.md`
+- Price schedule response DTO plan: `docs/superpowers/plans/2026-04-11-price-schedule-response-dto-implementation-plan.md`
 - JWT auth upgrade spec: `docs/superpowers/specs/2026-04-11-jwt-auth-upgrade-design.md`
 - JWT auth upgrade plan: `docs/superpowers/plans/2026-04-11-jwt-auth-upgrade-implementation-plan.md`
