@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -71,8 +72,15 @@ public class InventoryController {
 
     @GetMapping("/admin/skus/{skuId}/inventory/history")
     @Operation(summary = "Get inventory history", description = "Returns immutable inventory ledger records for a SKU.")
-    public ApiResponse<Map<String, Object>> history(@PathVariable Long skuId) {
-        return ApiResponse.success(inventoryService.history(skuId));
+    public ApiResponse<InventoryHistoryResponse> history(
+        @Parameter(description = "SKU ID", example = "20001")
+        @PathVariable Long skuId,
+        @Parameter(description = "Page number starting from 1", example = "1")
+        @RequestParam(defaultValue = "1") int page,
+        @Parameter(description = "Page size, maximum 100", example = "20")
+        @RequestParam(defaultValue = "20") int pageSize
+    ) {
+        return ApiResponse.success(inventoryService.history(skuId, page, pageSize));
     }
 
     @PostMapping("/admin/inventory/refunds")

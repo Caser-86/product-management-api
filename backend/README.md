@@ -193,6 +193,30 @@ Refund requests must explicitly set `restock`:
 - `true`: decrease `soldQty` and move the refunded quantity back to `availableQty`
 - `false`: decrease `soldQty` without adding sellable stock back
 
+Inventory history is available through:
+
+- `GET /admin/skus/{skuId}/inventory/history?page=1&pageSize=20`
+
+Response metadata includes:
+
+- `page`
+- `pageSize`
+- `total`
+
+Each history item returns:
+
+- `bizType`
+- `bizId`
+- `deltaAvailable`
+- `deltaReserved`
+- `createdAt`
+
+History paging rules:
+
+- default `pageSize` is `20`
+- maximum `pageSize` is `100`
+- results are ordered newest first
+
 ## Storefront Search
 
 `GET /products` reads from the `storefront_product_search` projection table.
@@ -306,6 +330,8 @@ After the application starts, interactive API docs are available at:
 - Product publish/review plan: `docs/superpowers/plans/2026-04-11-product-publish-review-workflow-implementation-plan.md`
 - Product workflow history query spec: `docs/superpowers/specs/2026-04-11-product-workflow-history-query-design.md`
 - Product workflow history query plan: `docs/superpowers/plans/2026-04-11-product-workflow-history-query-implementation-plan.md`
+- Inventory history pagination spec: `docs/superpowers/specs/2026-04-11-inventory-history-pagination-design.md`
+- Inventory history pagination plan: `docs/superpowers/plans/2026-04-11-inventory-history-pagination-implementation-plan.md`
 - Price history pagination spec: `docs/superpowers/specs/2026-04-11-price-history-pagination-design.md`
 - Price history pagination plan: `docs/superpowers/plans/2026-04-11-price-history-pagination-implementation-plan.md`
 - JWT auth upgrade spec: `docs/superpowers/specs/2026-04-11-jwt-auth-upgrade-design.md`

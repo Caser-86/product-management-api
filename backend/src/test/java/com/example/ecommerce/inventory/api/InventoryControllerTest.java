@@ -383,7 +383,11 @@ class InventoryControllerTest {
 
         mockMvc.perform(withBearer(get("/admin/skus/{skuId}/inventory/history", ownSkuId), platformAdminToken(9001L, 2001L)))
             .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.page").value(1))
+            .andExpect(jsonPath("$.data.pageSize").value(20))
+            .andExpect(jsonPath("$.data.total").value(1))
             .andExpect(jsonPath("$.data.items[0].bizType").value("adjust"))
+            .andExpect(jsonPath("$.data.items[0].bizId").value("manual restock"))
             .andExpect(jsonPath("$.data.items[0].deltaAvailable").value(3));
     }
 
@@ -428,6 +432,40 @@ class InventoryControllerTest {
         mockMvc.perform(withBearer(get("/admin/skus/{skuId}/inventory/history", ownSkuId), platformAdminToken(9001L, 2001L)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items[0].bizType").value("refund_no_restock"));
+    }
+
+    @Test
+    void inventory_history_supports_pagination() throws Exception {
+        applyInventoryAdjustment(ownSkuId, 1, "restock-1", 9001L);
+        applyInventoryAdjustment(ownSkuId, 2, "restock-2", 9001L);
+        applyInventoryAdjustment(ownSkuId, 3, "restock-3", 9001L);
+
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/inventory/history", ownSkuId)
+                .param("page", "2")
+                .param("pageSize", "1"), platformAdminToken(9001L, 2001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.page").value(2))
+            .andExpect(jsonPath("$.data.pageSize").value(1))
+            .andExpect(jsonPath("$.data.total").value(3))
+            .andExpect(jsonPath("$.data.items.length()").value(1))
+            .andExpect(jsonPath("$.data.items[0].bizId").value("restock-2"));
+    }
+
+    @Test
+    void inventory_history_clamps_page_size_to_maximum() throws Exception {
+        applyInventoryAdjustment(ownSkuId, 1, "restock-clamp", 9001L);
+
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/inventory/history", ownSkuId)
+                .param("pageSize", "999"), platformAdminToken(9001L, 2001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.pageSize").value(100));
+    }
+
+    @Test
+    void merchant_admin_cannot_read_inventory_history_for_other_merchant_sku() throws Exception {
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/inventory/history", foreignSkuId), merchantAdminToken(9002L, 2001L)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("AUTH_MERCHANT_SCOPE_DENIED"));
     }
 
     @Test
@@ -501,6 +539,19 @@ class InventoryControllerTest {
                 .content("""
                     {"bizId":"%s","operatorType":"system"}
                     """.formatted(bizId)))
+            .andExpect(status().isOk());
+    }
+
+    private void applyInventoryAdjustment(Long skuId, int delta, String reason, long operatorId) throws Exception {
+        mockMvc.perform(withBearer(post("/admin/skus/{skuId}/inventory/adjustments", skuId), platformAdminToken(9001L, 2001L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "delta": %d,
+                      "reason": "%s",
+                      "operatorId": %d
+                    }
+                    """.formatted(delta, reason, operatorId)))
             .andExpect(status().isOk());
     }
 
