@@ -4,7 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface StorefrontProductSearchRepository extends JpaRepository<StorefrontProductSearchEntity, Long> {
+public interface StorefrontProductSearchRepository extends JpaRepository<StorefrontProductSearchEntity, Long>, StorefrontProductSearchCustomRepository {
 
     Page<StorefrontProductSearchEntity> findByProductStatusNotAndPublishStatusAndAuditStatus(
         String productStatus,

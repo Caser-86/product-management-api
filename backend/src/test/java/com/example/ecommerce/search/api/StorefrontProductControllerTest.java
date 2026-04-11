@@ -101,6 +101,95 @@ class StorefrontProductControllerTest {
     }
 
     @Test
+    void filters_products_by_price_range() throws Exception {
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            2001L,
+            2001L,
+            33L,
+            "range-hoodie",
+            30001L,
+            new BigDecimal("99.00"),
+            new BigDecimal("149.00"),
+            6,
+            "in_stock",
+            "active",
+            "published",
+            "approved"
+        ));
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            2002L,
+            2001L,
+            33L,
+            "range-coat",
+            30002L,
+            new BigDecimal("299.00"),
+            new BigDecimal("349.00"),
+            2,
+            "in_stock",
+            "active",
+            "published",
+            "approved"
+        ));
+
+        mockMvc.perform(get("/products")
+                .param("minPrice", "120")
+                .param("maxPrice", "200"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.total").value(1))
+            .andExpect(jsonPath("$.data.items[0].title").value("range-hoodie"));
+    }
+
+    @Test
+    void sorts_products_by_price_ascending() throws Exception {
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            2003L,
+            2001L,
+            33L,
+            "sort-budget",
+            30003L,
+            new BigDecimal("59.00"),
+            new BigDecimal("99.00"),
+            5,
+            "in_stock",
+            "active",
+            "published",
+            "approved"
+        ));
+        storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
+            2004L,
+            2001L,
+            33L,
+            "sort-premium",
+            30004L,
+            new BigDecimal("259.00"),
+            new BigDecimal("399.00"),
+            5,
+            "in_stock",
+            "active",
+            "published",
+            "approved"
+        ));
+
+        mockMvc.perform(get("/products").param("sort", "price_asc"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[0].title").value("sort-budget"));
+    }
+
+    @Test
+    void rejects_unknown_sort_value() throws Exception {
+        mockMvc.perform(get("/products").param("sort", "random"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void rejects_invalid_price_range() throws Exception {
+        mockMvc.perform(get("/products")
+                .param("minPrice", "300")
+                .param("maxPrice", "100"))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void excludes_non_visible_projection_rows() throws Exception {
         storefrontProductSearchRepository.save(StorefrontProductSearchEntity.of(
             1002L,
