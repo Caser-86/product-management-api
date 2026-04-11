@@ -7,15 +7,18 @@ import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
 import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
+import com.example.ecommerce.support.AuthTestTokens;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.time.LocalDateTime;
 
@@ -26,12 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 class PricingControllerTest {
-
-    private static final String USER_ID_HEADER = "X-User-Id";
-    private static final String ROLE_HEADER = "X-Role";
-    private static final String MERCHANT_ID_HEADER = "X-Merchant-Id";
 
     @Autowired
     private MockMvc mockMvc;
@@ -54,6 +53,9 @@ class PricingControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private AuthTestTokens authTestTokens;
+
     private Long skuId;
 
     @BeforeEach
@@ -71,10 +73,7 @@ class PricingControllerTest {
 
     @Test
     void updates_price_and_records_history() throws Exception {
-        mockMvc.perform(patch("/admin/skus/{skuId}/prices", skuId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(patch("/admin/skus/{skuId}/prices", skuId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -86,10 +85,7 @@ class PricingControllerTest {
                     """))
             .andExpect(status().isOk());
 
-        mockMvc.perform(get("/admin/skus/{skuId}/price-history", skuId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001"))
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/price-history", skuId), platformAdminToken(9001L, 2001L)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items[0].reason").value("weekend campaign"))
             .andExpect(jsonPath("$.data.items[0].newPrice").value("{\"listPrice\":189.00,\"salePrice\":149.00}"));
@@ -97,10 +93,7 @@ class PricingControllerTest {
 
     @Test
     void creates_and_applies_scheduled_price() throws Exception {
-        MvcResult createScheduleResult = mockMvc.perform(post("/admin/skus/{skuId}/price-schedules", skuId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        MvcResult createScheduleResult = mockMvc.perform(withBearer(post("/admin/skus/{skuId}/price-schedules", skuId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -120,17 +113,11 @@ class PricingControllerTest {
             .path("scheduleId")
             .asLong();
 
-        mockMvc.perform(post("/admin/price-schedules/{scheduleId}/apply", scheduleId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001"))
+        mockMvc.perform(withBearer(post("/admin/price-schedules/{scheduleId}/apply", scheduleId), platformAdminToken(9001L, 2001L)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.code").value("SUCCESS"));
 
-        mockMvc.perform(get("/admin/skus/{skuId}/price-history", skuId)
-                .header(USER_ID_HEADER, "9001")
-                .header(ROLE_HEADER, "PLATFORM_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001"))
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/price-history", skuId), platformAdminToken(9001L, 2001L)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items[0].changeType").value("scheduled"))
             .andExpect(jsonPath("$.data.items[0].reason").value("scheduled release"));
@@ -142,10 +129,7 @@ class PricingControllerTest {
         foreignSpu.addSku(ProductSkuEntity.of(4001L, "SKU-PRC-2", "{\"color\":\"white\"}", "pricing-hash-2"));
         Long foreignSkuId = productSpuRepository.save(foreignSpu).getSkus().get(0).getId();
 
-        mockMvc.perform(patch("/admin/skus/{skuId}/prices", foreignSkuId)
-                .header(USER_ID_HEADER, "9002")
-                .header(ROLE_HEADER, "MERCHANT_ADMIN")
-                .header(MERCHANT_ID_HEADER, "2001")
+        mockMvc.perform(withBearer(patch("/admin/skus/{skuId}/prices", foreignSkuId), merchantAdminToken(9002L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -157,5 +141,17 @@ class PricingControllerTest {
                     """))
             .andExpect(status().isForbidden())
             .andExpect(jsonPath("$.code").value("AUTH_MERCHANT_SCOPE_DENIED"));
+    }
+
+    private String platformAdminToken(long userId, long merchantId) {
+        return authTestTokens.platformAdminToken(userId, merchantId);
+    }
+
+    private String merchantAdminToken(long userId, long merchantId) {
+        return authTestTokens.merchantAdminToken(userId, merchantId);
+    }
+
+    private MockHttpServletRequestBuilder withBearer(MockHttpServletRequestBuilder requestBuilder, String token) {
+        return requestBuilder.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
     }
 }

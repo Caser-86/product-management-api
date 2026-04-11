@@ -28,19 +28,25 @@ public class AuthTestTokens {
         return tokenFor(platformAdminUser(), Instant.now(), Instant.now().plus(60, ChronoUnit.MINUTES));
     }
 
+    public String platformAdminToken(long userId, long merchantId) {
+        return tokenFor(user("platform-admin-" + userId, userId, AuthRole.PLATFORM_ADMIN, merchantId), Instant.now(), Instant.now().plus(60, ChronoUnit.MINUTES));
+    }
+
+    public String merchantAdminToken(long userId, long merchantId) {
+        return tokenFor(user("merchant-admin-" + userId, userId, AuthRole.MERCHANT_ADMIN, merchantId), Instant.now(), Instant.now().plus(60, ChronoUnit.MINUTES));
+    }
+
     public String expiredPlatformAdminToken() {
         Instant issuedAt = Instant.now().minus(2, ChronoUnit.HOURS);
         return tokenFor(platformAdminUser(), issuedAt, issuedAt.plus(1, ChronoUnit.MINUTES));
     }
 
     private LocalAuthUser platformAdminUser() {
-        return new LocalAuthUser(
-            "platform-admin",
-            "platform-secret",
-            9001L,
-            AuthRole.PLATFORM_ADMIN,
-            2001L
-        );
+        return user("platform-admin", 9001L, AuthRole.PLATFORM_ADMIN, 2001L);
+    }
+
+    private LocalAuthUser user(String username, long userId, AuthRole role, long merchantId) {
+        return new LocalAuthUser(username, username + "-secret", userId, role, merchantId);
     }
 
     private String tokenFor(LocalAuthUser user, Instant issuedAt, Instant expiresAt) {
