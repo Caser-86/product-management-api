@@ -25,6 +25,16 @@ class OpenApiDocumentationTest {
             .andExpect(jsonPath("$.paths").exists())
             .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.type").value("http"))
             .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
-            .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.bearerFormat").value("JWT"));
+            .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.bearerFormat").value("JWT"))
+            .andExpect(jsonPath("$.paths['/inventory/reservations'].post.responses['200'].content['*/*'].schema.$ref")
+                .value("#/components/schemas/ApiResponseInventoryReservationResponse"))
+            .andExpect(jsonPath("$.paths['/inventory/reservations/{reservationId}/release'].post.responses['200'].content['*/*'].schema.$ref")
+                .value("#/components/schemas/ApiResponseInventoryReservationResponse"))
+            .andExpect(jsonPath("$.paths['/admin/skus/{skuId}/inventory'].get.responses['200'].content['*/*'].schema.$ref")
+                .value("#/components/schemas/ApiResponseInventorySnapshotResponse"))
+            .andExpect(jsonPath("$.paths['/admin/skus/{skuId}/inventory/adjustments'].post.responses['200'].content['*/*'].schema.$ref")
+                .value("#/components/schemas/ApiResponseInventoryAdjustmentResponse"))
+            .andExpect(jsonPath("$.paths['/admin/inventory/refunds'].post.responses['200'].content['*/*'].schema.$ref")
+                .value("#/components/schemas/ApiResponseInventoryRefundResponse"));
     }
 }

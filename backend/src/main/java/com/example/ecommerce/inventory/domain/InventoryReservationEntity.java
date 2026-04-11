@@ -55,6 +55,10 @@ public class InventoryReservationEntity {
         return quantity;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
     public boolean hasBizId(String bizId) {
         return this.bizId.equals(bizId);
     }
