@@ -63,7 +63,15 @@ public class InventoryReservationEntity {
         return "confirmed".equals(status);
     }
 
+    public boolean isReleased() {
+        return "released".equals(status);
+    }
+
     public void confirm() {
         this.status = "confirmed";
+    }
+
+    public void release() {
+        this.status = "released";
     }
 }
