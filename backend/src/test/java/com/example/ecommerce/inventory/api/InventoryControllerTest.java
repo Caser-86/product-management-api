@@ -167,6 +167,47 @@ class InventoryControllerTest {
     }
 
     @Test
+    void releases_reserved_inventory_back_to_available() throws Exception {
+        String reservationId = reserveInventory(ownSkuId, "ORDER-REL-1", 2);
+
+        mockMvc.perform(withBearer(post("/inventory/reservations/{reservationId}/release", reservationId), platformAdminToken(9001L, 2001L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"bizId":"ORDER-REL-1"}
+                    """))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.status").value("released"));
+
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/inventory", ownSkuId), platformAdminToken(9001L, 2001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.availableQty").value(10))
+            .andExpect(jsonPath("$.data.reservedQty").value(0));
+    }
+
+    @Test
+    void refunds_with_restock_move_sold_back_to_available() throws Exception {
+        String reservationId = reserveInventory(ownSkuId, "ORDER-REFUND-1", 2);
+        confirmReservation(reservationId, "ORDER-REFUND-1");
+
+        mockMvc.perform(withBearer(post("/admin/inventory/refunds"), platformAdminToken(9001L, 2001L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "bizId":"ORDER-REFUND-1",
+                      "skuId": %d,
+                      "quantity": 1,
+                      "restock": true,
+                      "reason": "customer cancellation",
+                      "operatorId": 9001
+                    }
+                    """.formatted(ownSkuId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.availableQty").value(9))
+            .andExpect(jsonPath("$.data.soldQty").value(1))
+            .andExpect(jsonPath("$.data.restock").value(true));
+    }
+
+    @Test
     void adjusts_inventory_for_admin_operations() throws Exception {
         mockMvc.perform(withBearer(post("/admin/skus/{skuId}/inventory/adjustments", ownSkuId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -279,5 +320,33 @@ class InventoryControllerTest {
 
     private MockHttpServletRequestBuilder withBearer(MockHttpServletRequestBuilder requestBuilder, String token) {
         return requestBuilder.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+    }
+
+    private String reserveInventory(Long skuId, String bizId, int quantity) throws Exception {
+        MvcResult reserveResult = mockMvc.perform(withBearer(post("/inventory/reservations"), platformAdminToken(9001L, 2001L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "idempotencyKey": "%s-attempt-1",
+                      "bizId": "%s",
+                      "items": [{"skuId": %d, "quantity": %d}]
+                    }
+                    """.formatted(bizId, bizId, skuId, quantity)))
+            .andExpect(status().isOk())
+            .andReturn();
+
+        return objectMapper.readTree(reserveResult.getResponse().getContentAsString())
+            .path("data")
+            .path("reservationId")
+            .asText();
+    }
+
+    private void confirmReservation(String reservationId, String bizId) throws Exception {
+        mockMvc.perform(withBearer(post("/inventory/reservations/{reservationId}/confirm", reservationId), platformAdminToken(9001L, 2001L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"bizId":"%s","operatorType":"system"}
+                    """.formatted(bizId)))
+            .andExpect(status().isOk());
     }
 }

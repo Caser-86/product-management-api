@@ -91,6 +91,30 @@ public class InventoryBalanceEntity {
         this.soldQty += quantity;
     }
 
+    public void release(int quantity) {
+        if (quantity <= 0) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "release quantity must be positive");
+        }
+        if (reservedQty < quantity) {
+            throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT, "reserved inventory insufficient");
+        }
+        this.reservedQty -= quantity;
+        this.availableQty += quantity;
+    }
+
+    public void refund(int quantity, boolean restock) {
+        if (quantity <= 0) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "refund quantity must be positive");
+        }
+        if (soldQty < quantity) {
+            throw new BusinessException(ErrorCode.INVENTORY_INSUFFICIENT, "sold inventory insufficient");
+        }
+        this.soldQty -= quantity;
+        if (restock) {
+            this.availableQty += quantity;
+        }
+    }
+
     public void adjust(int delta) {
         if (delta == 0) {
             throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "adjustment delta must not be zero");
