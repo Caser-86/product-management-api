@@ -127,6 +127,32 @@ writes so storefront search no longer assembles product, price, and stock data
 at request time. Storefront results only include products that are both
 `approved` and `published`.
 
+## Storefront Projection Maintenance
+
+Platform admins can repair storefront projection data through:
+
+- `POST /admin/search/storefront/products/{productId}/refresh`
+- `POST /admin/search/storefront/rebuild`
+
+Use single refresh when one product row is missing or stale. Use full rebuild
+after manual projection cleanup, backfill work, or suspected refresh drift.
+
+Both endpoints require a `PLATFORM_ADMIN` bearer token.
+
+Full rebuild responses include:
+
+- `processedCount`
+- `successCount`
+- `failureCount`
+- `durationMs`
+- `failures`
+
+Each failure item includes:
+
+- `productId`
+- `errorCode`
+- `message`
+
 ## Product Workflow
 
 Products now follow an explicit admin workflow:
