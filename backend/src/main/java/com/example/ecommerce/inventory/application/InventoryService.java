@@ -1,5 +1,6 @@
 package com.example.ecommerce.inventory.application;
 
+import com.example.ecommerce.inventory.api.InventoryHistoryResponse;
 import com.example.ecommerce.inventory.domain.InventoryBalanceRepository;
 import com.example.ecommerce.inventory.domain.InventoryLedgerEntity;
 import com.example.ecommerce.inventory.domain.InventoryLedgerRepository;
@@ -12,6 +13,8 @@ import com.example.ecommerce.shared.api.BusinessException;
 import com.example.ecommerce.shared.api.ErrorCode;
 import com.example.ecommerce.shared.auth.AuthContext;
 import com.example.ecommerce.shared.auth.AuthContextHolder;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -201,20 +204,28 @@ public class InventoryService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> history(Long skuId) {
+    public InventoryHistoryResponse history(Long skuId, int page, int pageSize) {
         var balance = inventoryBalanceRepository.findById(skuId)
             .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
         assertMerchantScope(balance.getMerchantId());
-        List<Map<String, Object>> items = inventoryLedgerRepository.findBySkuIdOrderByIdDesc(skuId).stream()
-            .map(ledger -> Map.<String, Object>of(
-                "bizType", ledger.getBizType(),
-                "bizId", ledger.getBizId(),
-                "deltaAvailable", ledger.getDeltaAvailable(),
-                "deltaReserved", ledger.getDeltaReserved(),
-                "createdAt", ledger.getCreatedAt() == null ? "" : ledger.getCreatedAt().toString()
+        int safePage = Math.max(page, 1);
+        int safePageSize = Math.min(Math.max(pageSize, 1), 100);
+        var pageable = PageRequest.of(
+            safePage - 1,
+            safePageSize,
+            Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+        );
+        var pageResult = inventoryLedgerRepository.findBySkuId(skuId, pageable);
+        var items = pageResult.getContent().stream()
+            .map(ledger -> new InventoryHistoryResponse.Item(
+                ledger.getBizType(),
+                ledger.getBizId(),
+                ledger.getDeltaAvailable(),
+                ledger.getDeltaReserved(),
+                ledger.getCreatedAt()
             ))
             .toList();
-        return Map.of("items", items);
+        return new InventoryHistoryResponse(items, safePage, safePageSize, pageResult.getTotalElements());
     }
 
     private void assertMerchantScope(Long resourceMerchantId) {
