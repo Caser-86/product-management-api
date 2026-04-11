@@ -176,6 +176,20 @@ writes so storefront search no longer assembles product, price, and stock data
 at request time. Storefront results only include products that are both
 `approved` and `published`.
 
+Supported query parameters:
+
+- `keyword`
+- `categoryId`
+- `minPrice`
+- `maxPrice`
+- `sort`
+
+Supported sort values:
+
+- `newest`
+- `price_asc`
+- `price_desc`
+
 ## Storefront Projection Maintenance
 
 Platform admins can repair storefront projection data through:
