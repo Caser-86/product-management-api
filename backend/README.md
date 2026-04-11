@@ -131,6 +131,17 @@ In Swagger UI:
 Due price schedules are applied automatically by the in-process scheduler.
 Manual application is still available through the admin API.
 
+Multi-instance deployments are protected by a shared database lock backed by
+the `shedlock` table. Only one application node will run the due-price scan at
+a time under normal conditions.
+
+Scheduler tuning properties:
+
+- `pricing.schedule.fixed-delay-ms`
+- `pricing.schedule.lock-name`
+- `pricing.schedule.lock-at-most-for`
+- `pricing.schedule.lock-at-least-for`
+
 ## Reverse Inventory Flows
 
 The API supports two reverse inventory operations:

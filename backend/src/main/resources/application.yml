@@ -29,3 +29,10 @@ app:
       issuer: ${APP_AUTH_JWT_ISSUER:product-management-api}
       secret: ${APP_AUTH_JWT_SECRET:change-me-for-local-development-only}
       access-token-ttl-minutes: ${APP_AUTH_JWT_ACCESS_TOKEN_TTL_MINUTES:60}
+
+pricing:
+  schedule:
+    fixed-delay-ms: ${PRICING_SCHEDULE_FIXED_DELAY_MS:30000}
+    lock-name: ${PRICING_SCHEDULE_LOCK_NAME:pricing.due-schedule-runner}
+    lock-at-most-for: ${PRICING_SCHEDULE_LOCK_AT_MOST_FOR:PT1M}
+    lock-at-least-for: ${PRICING_SCHEDULE_LOCK_AT_LEAST_FOR:PT5S}
