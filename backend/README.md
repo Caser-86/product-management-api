@@ -119,6 +119,23 @@ In Swagger UI:
 Due price schedules are applied automatically by the in-process scheduler.
 Manual application is still available through the admin API.
 
+## Reverse Inventory Flows
+
+The API supports two reverse inventory operations:
+
+- `POST /inventory/reservations/{reservationId}/release`
+- `POST /admin/inventory/refunds`
+
+Use reservation release when an unconfirmed order attempt is canceled and the
+reserved quantity should return to `availableQty`.
+
+Use refunds after sold inventory must be reversed.
+
+Refund requests must explicitly set `restock`:
+
+- `true`: decrease `soldQty` and move the refunded quantity back to `availableQty`
+- `false`: decrease `soldQty` without adding sellable stock back
+
 ## Storefront Search
 
 `GET /products` reads from the `storefront_product_search` projection table.
