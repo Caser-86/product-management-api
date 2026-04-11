@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -51,7 +52,14 @@ public class PricingController {
 
     @GetMapping("/admin/skus/{skuId}/price-history")
     @Operation(summary = "Get price history", description = "Returns price change history for a SKU.")
-    public ApiResponse<Map<String, Object>> history(@PathVariable Long skuId) {
-        return ApiResponse.success(pricingService.history(skuId));
+    public ApiResponse<PriceHistoryResponse> history(
+        @Parameter(description = "SKU ID", example = "20001")
+        @PathVariable Long skuId,
+        @Parameter(description = "Page number starting from 1", example = "1")
+        @RequestParam(defaultValue = "1") int page,
+        @Parameter(description = "Page size, maximum 100", example = "20")
+        @RequestParam(defaultValue = "20") int pageSize
+    ) {
+        return ApiResponse.success(pricingService.history(skuId, page, pageSize));
     }
 }

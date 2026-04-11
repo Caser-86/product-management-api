@@ -11,6 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
@@ -80,7 +82,10 @@ class PriceScheduleJobTest {
         int applied = pricingService.applyDueSchedules(10);
 
         assertThat(applied).isEqualTo(1);
-        assertThat(priceHistoryRepository.findBySkuIdOrderByIdDesc(skuId)).hasSize(1);
+        assertThat(priceHistoryRepository.findBySkuId(
+            skuId,
+            PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")))
+        ).getContent()).hasSize(1);
         assertThat(priceScheduleRepository.findById(dueScheduleId)).get()
             .extracting(PriceScheduleEntity::getStatus)
             .isEqualTo("applied");
