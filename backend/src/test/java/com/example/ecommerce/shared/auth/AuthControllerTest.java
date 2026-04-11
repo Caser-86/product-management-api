@@ -48,6 +48,8 @@ class AuthControllerTest {
 
     @Test
     void logs_in_with_default_platform_admin_credentials() throws Exception {
+        Long expectedUserId = authUserRepository.findByUsername("platform-admin").orElseThrow().getId();
+
         MvcResult result = mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -71,7 +73,7 @@ class AuthControllerTest {
             .parseSignedClaims(accessToken)
             .getPayload();
 
-        org.junit.jupiter.api.Assertions.assertEquals(9001, claims.get("uid", Integer.class));
+        org.junit.jupiter.api.Assertions.assertEquals(expectedUserId, claims.get("uid", Long.class));
         org.junit.jupiter.api.Assertions.assertNull(claims.get("userId"));
     }
 
