@@ -13,6 +13,7 @@ public interface StorefrontProductSearchCustomRepository {
         Long categoryId,
         BigDecimal minPrice,
         BigDecimal maxPrice,
+        Boolean inStockOnly,
         StorefrontSearchSort sort,
         Pageable pageable
     );

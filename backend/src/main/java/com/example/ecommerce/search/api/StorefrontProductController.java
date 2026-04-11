@@ -34,11 +34,13 @@ public class StorefrontProductController {
         @RequestParam(required = false) BigDecimal maxPrice,
         @Parameter(description = "Sort order: newest, price_asc, or price_desc", example = "price_asc")
         @RequestParam(required = false) String sort,
+        @Parameter(description = "When true, only return products with available stock", example = "true")
+        @RequestParam(required = false) Boolean inStockOnly,
         @Parameter(description = "Page number, starting from 1", example = "1")
         @RequestParam(defaultValue = "1") int page,
         @Parameter(description = "Page size", example = "20")
         @RequestParam(defaultValue = "20") int pageSize
     ) {
-        return ApiResponse.success(storefrontSearchService.search(keyword, categoryId, minPrice, maxPrice, sort, page, pageSize));
+        return ApiResponse.success(storefrontSearchService.search(keyword, categoryId, minPrice, maxPrice, inStockOnly, sort, page, pageSize));
     }
 }
