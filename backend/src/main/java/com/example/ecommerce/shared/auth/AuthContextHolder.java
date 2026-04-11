@@ -11,6 +11,10 @@ public final class AuthContextHolder {
         HOLDER.set(context);
     }
 
+    public static AuthContext get() {
+        return HOLDER.get();
+    }
+
     public static AuthContext getRequired() {
         AuthContext context = HOLDER.get();
         if (context == null) {
