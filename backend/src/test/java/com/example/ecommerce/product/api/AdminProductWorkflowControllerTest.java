@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -273,6 +274,112 @@ class AdminProductWorkflowControllerTest {
             "PLATFORM_ADMIN",
             "take down for review"
         );
+    }
+
+    @Test
+    void platform_admin_can_read_workflow_history() throws Exception {
+        long productId = createPublishedProduct(3001L);
+        workflowHistoryRepository.save(ProductWorkflowHistoryEntity.of(
+            productId,
+            "publish",
+            "active",
+            "active",
+            "approved",
+            "approved",
+            "unpublished",
+            "published",
+            9012L,
+            "PLATFORM_ADMIN",
+            "publish event"
+        ));
+
+        mockMvc.perform(withBearer(get("/admin/products/{productId}/workflow-history", productId), platformAdminToken(9001L, 3001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items").isArray())
+            .andExpect(jsonPath("$.data.items[0].action").value("publish"))
+            .andExpect(jsonPath("$.data.items[0].operatorRole").value("PLATFORM_ADMIN"))
+            .andExpect(jsonPath("$.data.items[0].comment").value("publish event"));
+    }
+
+    @Test
+    void merchant_admin_can_read_own_product_history() throws Exception {
+        long productId = createDraftProduct(3001L, "SPU-WF-HISTORY-OWN");
+
+        mockMvc.perform(withBearer(get("/admin/products/{productId}/workflow-history", productId), merchantAdminToken(9101L, 3001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items").isArray())
+            .andExpect(jsonPath("$.data.items.length()").value(0));
+    }
+
+    @Test
+    void merchant_admin_cannot_read_other_merchant_history() throws Exception {
+        long productId = createDraftProduct(5001L, "SPU-WF-HISTORY-OTHER");
+
+        mockMvc.perform(withBearer(get("/admin/products/{productId}/workflow-history", productId), merchantAdminToken(9102L, 3001L)))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.code").value("PRODUCT_NOT_FOUND"));
+    }
+
+    @Test
+    void workflow_history_is_sorted_newest_first() throws Exception {
+        long productId = createDraftProduct(3001L, "SPU-WF-HISTORY-ORDER");
+        workflowHistoryRepository.save(ProductWorkflowHistoryEntity.of(
+            productId,
+            "submit_for_review",
+            "draft",
+            "draft",
+            "pending",
+            "pending",
+            "unpublished",
+            "unpublished",
+            9103L,
+            "MERCHANT_ADMIN",
+            "older entry"
+        ));
+        workflowHistoryRepository.save(ProductWorkflowHistoryEntity.of(
+            productId,
+            "approve",
+            "draft",
+            "active",
+            "pending",
+            "approved",
+            "unpublished",
+            "unpublished",
+            9003L,
+            "PLATFORM_ADMIN",
+            "newer entry"
+        ));
+
+        mockMvc.perform(withBearer(get("/admin/products/{productId}/workflow-history", productId), platformAdminToken(9001L, 3001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[0].action").value("approve"))
+            .andExpect(jsonPath("$.data.items[1].action").value("submit_for_review"));
+    }
+
+    @Test
+    void deleted_product_workflow_history_remains_readable() throws Exception {
+        long productId = createDraftProduct(3001L, "SPU-WF-HISTORY-DELETED");
+        ProductSpuEntity product = productSpuRepository.findById(productId).orElseThrow();
+        product.archive();
+        productSpuRepository.save(product);
+        workflowHistoryRepository.save(ProductWorkflowHistoryEntity.of(
+            productId,
+            "delete",
+            "draft",
+            "deleted",
+            "pending",
+            "pending",
+            "unpublished",
+            "unpublished",
+            9104L,
+            "MERCHANT_ADMIN",
+            "archived for cleanup"
+        ));
+
+        mockMvc.perform(withBearer(get("/admin/products/{productId}/workflow-history", productId), platformAdminToken(9001L, 3001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[0].action").value("delete"))
+            .andExpect(jsonPath("$.data.items[0].toStatus").value("deleted"));
     }
 
     private String platformAdminToken(long userId, long merchantId) {

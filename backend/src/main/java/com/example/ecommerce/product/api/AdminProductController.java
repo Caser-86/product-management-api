@@ -57,6 +57,15 @@ public class AdminProductController {
         return ApiResponse.success(productCommandService.get(productId));
     }
 
+    @GetMapping("/{productId}/workflow-history")
+    @Operation(summary = "Get workflow history", description = "Returns workflow history entries for a product.")
+    public ApiResponse<ProductWorkflowHistoryResponse> workflowHistory(
+        @Parameter(description = "Product ID", example = "1001")
+        @PathVariable Long productId
+    ) {
+        return ApiResponse.success(productCommandService.workflowHistory(productId));
+    }
+
     @GetMapping
     @Operation(summary = "List products", description = "Lists products for a merchant with pagination.")
     public ApiResponse<ProductListResponse> list(

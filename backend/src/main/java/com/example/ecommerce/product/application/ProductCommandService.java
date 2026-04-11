@@ -7,6 +7,7 @@ import com.example.ecommerce.product.api.ProductListResponse;
 import com.example.ecommerce.product.api.ProductResponse;
 import com.example.ecommerce.product.api.ProductUpdateRequest;
 import com.example.ecommerce.product.api.ProductWorkflowActionRequest;
+import com.example.ecommerce.product.api.ProductWorkflowHistoryResponse;
 import com.example.ecommerce.product.api.ProductWorkflowRejectRequest;
 import com.example.ecommerce.product.domain.ProductSkuEntity;
 import com.example.ecommerce.product.domain.ProductSpuEntity;
@@ -156,6 +157,29 @@ public class ProductCommandService {
         return new ProductListResponse(items, safePage, safePageSize, pageResult.getTotalElements());
     }
 
+    @Transactional(readOnly = true)
+    public ProductWorkflowHistoryResponse workflowHistory(Long productId) {
+        ProductSpuEntity spu = spuRepository.findById(productId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found"));
+        assertWorkflowHistoryScope(spu);
+        var items = productWorkflowHistoryRepository.findByProductIdOrderByCreatedAtDescIdDesc(productId).stream()
+            .map(history -> new ProductWorkflowHistoryResponse.Item(
+                history.getAction(),
+                history.getFromStatus(),
+                history.getToStatus(),
+                history.getFromAuditStatus(),
+                history.getToAuditStatus(),
+                history.getFromPublishStatus(),
+                history.getToPublishStatus(),
+                history.getOperatorId(),
+                history.getOperatorRole(),
+                history.getComment(),
+                history.getCreatedAt()
+            ))
+            .toList();
+        return new ProductWorkflowHistoryResponse(items);
+    }
+
     @Transactional
     public ProductResponse submitForReview(Long productId, ProductWorkflowActionRequest request) {
         AuthContext auth = assertMerchantAdmin();
@@ -299,6 +323,16 @@ public class ProductCommandService {
     }
 
     private void assertMerchantOwnedOrNotFound(ProductSpuEntity spu, AuthContext auth) {
+        if (!spu.getMerchantId().equals(auth.merchantId())) {
+            throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found");
+        }
+    }
+
+    private void assertWorkflowHistoryScope(ProductSpuEntity spu) {
+        AuthContext auth = AuthContextHolder.getRequired();
+        if (auth.isPlatformAdmin()) {
+            return;
+        }
         if (!spu.getMerchantId().equals(auth.merchantId())) {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "product not found");
         }
