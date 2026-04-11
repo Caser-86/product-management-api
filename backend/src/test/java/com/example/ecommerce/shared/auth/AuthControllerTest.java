@@ -24,12 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {
     "app.auth.jwt.issuer=product-management-api-test",
     "app.auth.jwt.secret=change-me-for-local-development-only",
-    "app.auth.jwt.access-token-ttl-minutes=60",
-    "app.auth.users[0].username=platform-admin",
-    "app.auth.users[0].password=platform-secret",
-    "app.auth.users[0].user-id=9001",
-    "app.auth.users[0].role=PLATFORM_ADMIN",
-    "app.auth.users[0].merchant-id=2001"
+    "app.auth.jwt.access-token-ttl-minutes=60"
 })
 class AuthControllerTest {
 
@@ -38,8 +33,13 @@ class AuthControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private AuthUserRepository authUserRepository;
+
     @Test
-    void logs_in_with_configured_platform_user() throws Exception {
+    void logs_in_with_default_platform_admin_credentials() throws Exception {
+        Long expectedUserId = authUserRepository.findByUsername("platform-admin").orElseThrow().getId();
+
         MvcResult result = mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
@@ -63,7 +63,7 @@ class AuthControllerTest {
             .parseSignedClaims(accessToken)
             .getPayload();
 
-        org.junit.jupiter.api.Assertions.assertEquals(9001, claims.get("uid", Integer.class));
+        org.junit.jupiter.api.Assertions.assertEquals(expectedUserId, claims.get("uid", Long.class));
         org.junit.jupiter.api.Assertions.assertNull(claims.get("userId"));
     }
 
@@ -80,5 +80,37 @@ class AuthControllerTest {
             .andExpect(status().isUnauthorized())
             .andExpect(jsonPath("$.code").value("AUTH_INVALID_CREDENTIALS"))
             .andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void disabled_user_is_rejected() throws Exception {
+        disableUser("merchant-admin");
+
+        mockMvc.perform(post("/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "username": "merchant-admin",
+                      "password": "merchant-secret"
+                    }
+                    """))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("AUTH_INVALID_CREDENTIALS"));
+    }
+
+    private void disableUser(String username) {
+        AuthUserEntity user = authUserRepository.findByUsername(username).orElseThrow();
+        setField(user, "status", "disabled");
+        authUserRepository.save(user);
+    }
+
+    private static void setField(Object target, String fieldName, Object value) {
+        try {
+            var field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (ReflectiveOperationException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }
