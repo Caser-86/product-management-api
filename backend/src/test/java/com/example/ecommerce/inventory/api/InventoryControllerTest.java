@@ -208,6 +208,43 @@ class InventoryControllerTest {
     }
 
     @Test
+    void confirmed_reservation_cannot_be_released() throws Exception {
+        String reservationId = reserveInventory(ownSkuId, "ORDER-REL-2", 1);
+        confirmReservation(reservationId, "ORDER-REL-2");
+
+        mockMvc.perform(withBearer(post("/inventory/reservations/{reservationId}/release", reservationId), platformAdminToken(9001L, 2001L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"bizId":"ORDER-REL-2"}
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.code").value("COMMON_VALIDATION_FAILED"));
+    }
+
+    @Test
+    void refund_without_restock_only_reduces_sold_quantity() throws Exception {
+        String reservationId = reserveInventory(ownSkuId, "ORDER-REFUND-2", 2);
+        confirmReservation(reservationId, "ORDER-REFUND-2");
+
+        mockMvc.perform(withBearer(post("/admin/inventory/refunds"), platformAdminToken(9001L, 2001L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "bizId":"ORDER-REFUND-2",
+                      "skuId": %d,
+                      "quantity": 1,
+                      "restock": false,
+                      "reason": "damaged return",
+                      "operatorId": 9001
+                    }
+                    """.formatted(ownSkuId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.availableQty").value(8))
+            .andExpect(jsonPath("$.data.soldQty").value(1))
+            .andExpect(jsonPath("$.data.restock").value(false));
+    }
+
+    @Test
     void adjusts_inventory_for_admin_operations() throws Exception {
         mockMvc.perform(withBearer(post("/admin/skus/{skuId}/inventory/adjustments", ownSkuId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)

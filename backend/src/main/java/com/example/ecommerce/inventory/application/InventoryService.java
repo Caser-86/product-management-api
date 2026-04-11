@@ -103,6 +103,35 @@ public class InventoryService {
         refreshProjectionBySku(reservation.getSkuId());
     }
 
+    @Transactional
+    public String release(String reservationId, String bizId) {
+        var reservation = inventoryReservationRepository.findById(reservationId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "reservation not found"));
+        if (!reservation.hasBizId(bizId)) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "reservation bizId mismatch");
+        }
+        if (reservation.isConfirmed() || reservation.isReleased()) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "reservation cannot be released");
+        }
+        var balance = inventoryBalanceRepository.findById(reservation.getSkuId())
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        assertMerchantScope(balance.getMerchantId());
+        balance.release(reservation.getQuantity());
+        reservation.release();
+        inventoryLedgerRepository.save(
+            InventoryLedgerEntity.of(
+                reservation.getSkuId(),
+                balance.getMerchantId(),
+                "release",
+                bizId,
+                reservation.getQuantity(),
+                -reservation.getQuantity()
+            )
+        );
+        refreshProjectionBySku(reservation.getSkuId());
+        return reservationId;
+    }
+
     @Transactional(readOnly = true)
     public Map<String, Object> snapshot(Long skuId) {
         var balance = inventoryBalanceRepository.findById(skuId)
@@ -133,6 +162,39 @@ public class InventoryService {
             "availableQty", balance.getAvailableQty(),
             "reservedQty", balance.getReservedQty(),
             "soldQty", balance.getSoldQty(),
+            "reason", reason == null ? "" : reason,
+            "operatorId", operatorId == null ? 0L : operatorId
+        );
+    }
+
+    @Transactional
+    public Map<String, Object> refund(Long skuId, String bizId, int quantity, boolean restock, String reason, Long operatorId) {
+        if (bizId == null || bizId.isBlank()) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "bizId is required");
+        }
+        var balance = inventoryBalanceRepository.findById(skuId)
+            .orElseThrow(() -> new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "inventory not found"));
+        assertMerchantScope(balance.getMerchantId());
+        balance.refund(quantity, restock);
+        inventoryLedgerRepository.save(
+            InventoryLedgerEntity.of(
+                skuId,
+                balance.getMerchantId(),
+                restock ? "refund_restock" : "refund_no_restock",
+                bizId,
+                restock ? quantity : 0,
+                0
+            )
+        );
+        refreshProjectionBySku(skuId);
+        return Map.of(
+            "skuId", skuId,
+            "totalQty", balance.getTotalQty(),
+            "availableQty", balance.getAvailableQty(),
+            "reservedQty", balance.getReservedQty(),
+            "soldQty", balance.getSoldQty(),
+            "bizId", bizId,
+            "restock", restock,
             "reason", reason == null ? "" : reason,
             "operatorId", operatorId == null ? 0L : operatorId
         );
