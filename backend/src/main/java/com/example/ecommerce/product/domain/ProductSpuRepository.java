@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
 
@@ -28,4 +29,7 @@ public interface ProductSpuRepository extends JpaRepository<ProductSpuEntity, Lo
         Long categoryId,
         Pageable pageable
     );
+
+    @Query("select p.id from ProductSpuEntity p order by p.id asc")
+    Page<Long> findIdsForProjectionRebuild(Pageable pageable);
 }
