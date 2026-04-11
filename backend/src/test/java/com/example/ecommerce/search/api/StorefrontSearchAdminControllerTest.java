@@ -10,12 +10,15 @@ import com.example.ecommerce.product.domain.ProductSpuRepository;
 import com.example.ecommerce.product.domain.ProductWorkflowHistoryRepository;
 import com.example.ecommerce.search.application.ProductSearchProjector;
 import com.example.ecommerce.search.domain.StorefrontProductSearchRepository;
+import com.example.ecommerce.shared.api.BusinessException;
+import com.example.ecommerce.shared.api.ErrorCode;
 import com.example.ecommerce.support.AuthTestTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -24,6 +27,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -49,6 +53,9 @@ class StorefrontSearchAdminControllerTest {
 
     @Autowired
     private ProductSearchProjector productSearchProjector;
+
+    @SpyBean
+    private ProductSearchProjector productSearchProjectorSpy;
 
     @Autowired
     private ProductWorkflowHistoryRepository productWorkflowHistoryRepository;
@@ -80,6 +87,46 @@ class StorefrontSearchAdminControllerTest {
             .andExpect(jsonPath("$.data.status").value("refreshed"));
 
         assertThat(storefrontProductSearchRepository.findById(productId)).isPresent();
+    }
+
+    @Test
+    void admin_rebuild_restores_missing_projection_rows() throws Exception {
+        Long firstProductId = createStorefrontVisibleProduct();
+        Long secondProductId = createStorefrontVisibleProduct();
+
+        productSearchProjector.refresh(firstProductId);
+        productSearchProjector.refresh(secondProductId);
+        storefrontProductSearchRepository.deleteAll();
+
+        mockMvc.perform(withBearer(post("/admin/search/storefront/rebuild"), platformAdminToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.processedCount").value(2))
+            .andExpect(jsonPath("$.data.successCount").value(2))
+            .andExpect(jsonPath("$.data.failureCount").value(0));
+
+        assertThat(storefrontProductSearchRepository.findById(firstProductId)).isPresent();
+        assertThat(storefrontProductSearchRepository.findById(secondProductId)).isPresent();
+    }
+
+    @Test
+    void rebuild_reports_failures_without_aborting() throws Exception {
+        Long validProductId = createStorefrontVisibleProduct();
+        Long brokenProductId = createStorefrontVisibleProduct();
+
+        storefrontProductSearchRepository.deleteAll();
+        doThrow(new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "projection rebuild failed"))
+            .when(productSearchProjectorSpy)
+            .refresh(brokenProductId);
+
+        mockMvc.perform(withBearer(post("/admin/search/storefront/rebuild"), platformAdminToken()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.processedCount").value(2))
+            .andExpect(jsonPath("$.data.successCount").value(1))
+            .andExpect(jsonPath("$.data.failureCount").value(1))
+            .andExpect(jsonPath("$.data.failures[0].productId").value(brokenProductId))
+            .andExpect(jsonPath("$.data.failures[0].errorCode").value("PRODUCT_NOT_FOUND"));
+
+        assertThat(storefrontProductSearchRepository.findById(validProductId)).isPresent();
     }
 
     private long createStorefrontVisibleProduct() {

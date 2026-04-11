@@ -3,6 +3,7 @@ package com.example.ecommerce.shared.api;
 public enum ErrorCode {
     SUCCESS,
     COMMON_VALIDATION_FAILED,
+    COMMON_INTERNAL_ERROR,
     COMMON_VERSION_CONFLICT,
     AUTH_UNAUTHENTICATED,
     AUTH_INVALID_CREDENTIALS,
