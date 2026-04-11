@@ -31,17 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestPropertySource(properties = {
     "app.auth.jwt.issuer=product-management-api-test",
     "app.auth.jwt.secret=change-me-for-local-development-only",
-    "app.auth.jwt.access-token-ttl-minutes=60",
-    "app.auth.users[0].username=platform-admin",
-    "app.auth.users[0].password=platform-secret",
-    "app.auth.users[0].user-id=9001",
-    "app.auth.users[0].role=PLATFORM_ADMIN",
-    "app.auth.users[0].merchant-id=2001",
-    "app.auth.users[1].username=merchant-admin",
-    "app.auth.users[1].password=merchant-secret",
-    "app.auth.users[1].user-id=9002",
-    "app.auth.users[1].role=MERCHANT_ADMIN",
-    "app.auth.users[1].merchant-id=2001"
+    "app.auth.jwt.access-token-ttl-minutes=60"
 })
 class JwtAuthenticationFilterTest {
 
