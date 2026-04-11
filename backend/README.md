@@ -22,6 +22,15 @@ $env:Path="$env:JAVA_HOME\bin;$env:Path"
 .\gradlew.bat clean test --no-daemon
 ```
 
+## Continuous Integration
+
+GitHub Actions validates three delivery checks on pushes and pull requests to
+`main`:
+
+- backend tests with `./gradlew clean test --no-daemon`
+- jar packaging with `./gradlew bootJar --no-daemon`
+- Docker image build from `backend/Dockerfile`
+
 Start the API locally from `backend/`:
 
 ```powershell
