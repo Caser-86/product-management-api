@@ -42,6 +42,17 @@ public class InventoryController {
         return ApiResponse.success(null);
     }
 
+    @PostMapping("/inventory/reservations/{reservationId}/release")
+    @Operation(summary = "Release reservation", description = "Releases a still-reserved inventory reservation back to available stock.")
+    public ApiResponse<Map<String, Object>> release(
+        @Parameter(description = "Reservation ID", example = "order-8001-attempt-1")
+        @PathVariable String reservationId,
+        @Valid @RequestBody InventoryReleaseRequest request
+    ) {
+        String releasedReservationId = inventoryService.release(reservationId, request.bizId());
+        return ApiResponse.success(Map.of("reservationId", releasedReservationId, "status", "released"));
+    }
+
     @PostMapping("/admin/skus/{skuId}/inventory/adjustments")
     @Operation(summary = "Adjust inventory", description = "Applies a manual stock adjustment to a SKU.")
     public ApiResponse<Map<String, Object>> adjust(
@@ -62,5 +73,20 @@ public class InventoryController {
     @Operation(summary = "Get inventory history", description = "Returns immutable inventory ledger records for a SKU.")
     public ApiResponse<Map<String, Object>> history(@PathVariable Long skuId) {
         return ApiResponse.success(inventoryService.history(skuId));
+    }
+
+    @PostMapping("/admin/inventory/refunds")
+    @Operation(summary = "Refund inventory", description = "Reverses sold quantity for a SKU and optionally restocks sellable inventory.")
+    public ApiResponse<Map<String, Object>> refund(@Valid @RequestBody InventoryRefundRequest request) {
+        return ApiResponse.success(
+            inventoryService.refund(
+                request.skuId(),
+                request.bizId(),
+                request.quantity(),
+                request.restock(),
+                request.reason(),
+                request.operatorId()
+            )
+        );
     }
 }

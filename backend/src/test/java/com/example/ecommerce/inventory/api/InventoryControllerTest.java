@@ -245,6 +245,38 @@ class InventoryControllerTest {
     }
 
     @Test
+    void anonymous_cannot_release_inventory() throws Exception {
+        mockMvc.perform(post("/inventory/reservations/{reservationId}/release", "missing-auth")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"bizId":"ORDER-REL-3"}
+                    """))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.code").value("AUTH_UNAUTHENTICATED"));
+    }
+
+    @Test
+    void merchant_admin_cannot_refund_other_merchant_inventory() throws Exception {
+        String reservationId = reserveInventory(foreignSkuId, "ORDER-REFUND-3", 1);
+        confirmReservation(reservationId, "ORDER-REFUND-3");
+
+        mockMvc.perform(withBearer(post("/admin/inventory/refunds"), merchantAdminToken(9002L, 2001L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "bizId":"ORDER-REFUND-3",
+                      "skuId": %d,
+                      "quantity": 1,
+                      "restock": true,
+                      "reason": "cross-merchant refund",
+                      "operatorId": 9002
+                    }
+                    """.formatted(foreignSkuId)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("AUTH_MERCHANT_SCOPE_DENIED"));
+    }
+
+    @Test
     void adjusts_inventory_for_admin_operations() throws Exception {
         mockMvc.perform(withBearer(post("/admin/skus/{skuId}/inventory/adjustments", ownSkuId), platformAdminToken(9001L, 2001L))
                 .contentType(MediaType.APPLICATION_JSON)
