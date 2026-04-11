@@ -2,6 +2,7 @@ package com.example.ecommerce.pricing.application;
 
 import com.example.ecommerce.pricing.api.PriceHistoryResponse;
 import com.example.ecommerce.pricing.api.PriceScheduleRequest;
+import com.example.ecommerce.pricing.api.PriceScheduleResponse;
 import com.example.ecommerce.pricing.api.PriceUpdateRequest;
 import com.example.ecommerce.pricing.domain.PriceCurrentEntity;
 import com.example.ecommerce.pricing.domain.PriceCurrentRepository;
@@ -68,7 +69,7 @@ public class PricingService {
     }
 
     @Transactional
-    public Map<String, Object> createSchedule(Long skuId, PriceScheduleRequest request) {
+    public PriceScheduleResponse createSchedule(Long skuId, PriceScheduleRequest request) {
         var sku = productSkuRepository.findById(skuId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "sku not found"));
         assertMerchantScope(sku.getMerchantId());
@@ -77,7 +78,7 @@ public class PricingService {
         PriceScheduleEntity schedule = priceScheduleRepository.save(
             PriceScheduleEntity.pending(skuId, sku.getMerchantId(), payload, request.effectiveAt(), request.expireAt())
         );
-        return Map.of("scheduleId", schedule.getId(), "status", schedule.getStatus());
+        return new PriceScheduleResponse(schedule.getId(), schedule.getStatus());
     }
 
     @Transactional(readOnly = true)
