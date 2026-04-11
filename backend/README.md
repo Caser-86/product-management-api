@@ -151,6 +151,31 @@ Scheduler tuning properties:
 - `pricing.schedule.lock-at-most-for`
 - `pricing.schedule.lock-at-least-for`
 
+## Price History
+
+Admin price history is available through:
+
+- `GET /admin/skus/{skuId}/price-history?page=1&pageSize=20`
+
+Response metadata includes:
+
+- `page`
+- `pageSize`
+- `total`
+
+Each history item returns typed price snapshots instead of JSON strings:
+
+- `oldPrice.listPrice`
+- `oldPrice.salePrice`
+- `newPrice.listPrice`
+- `newPrice.salePrice`
+
+History paging rules:
+
+- default `pageSize` is `20`
+- maximum `pageSize` is `100`
+- results are ordered newest first
+
 ## Reverse Inventory Flows
 
 The API supports two reverse inventory operations:
@@ -281,5 +306,7 @@ After the application starts, interactive API docs are available at:
 - Product publish/review plan: `docs/superpowers/plans/2026-04-11-product-publish-review-workflow-implementation-plan.md`
 - Product workflow history query spec: `docs/superpowers/specs/2026-04-11-product-workflow-history-query-design.md`
 - Product workflow history query plan: `docs/superpowers/plans/2026-04-11-product-workflow-history-query-implementation-plan.md`
+- Price history pagination spec: `docs/superpowers/specs/2026-04-11-price-history-pagination-design.md`
+- Price history pagination plan: `docs/superpowers/plans/2026-04-11-price-history-pagination-implementation-plan.md`
 - JWT auth upgrade spec: `docs/superpowers/specs/2026-04-11-jwt-auth-upgrade-design.md`
 - JWT auth upgrade plan: `docs/superpowers/plans/2026-04-11-jwt-auth-upgrade-implementation-plan.md`

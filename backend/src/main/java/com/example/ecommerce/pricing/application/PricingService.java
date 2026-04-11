@@ -1,5 +1,6 @@
 package com.example.ecommerce.pricing.application;
 
+import com.example.ecommerce.pricing.api.PriceHistoryResponse;
 import com.example.ecommerce.pricing.api.PriceScheduleRequest;
 import com.example.ecommerce.pricing.api.PriceUpdateRequest;
 import com.example.ecommerce.pricing.domain.PriceCurrentEntity;
@@ -18,6 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -79,19 +81,27 @@ public class PricingService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Object> history(Long skuId) {
+    public PriceHistoryResponse history(Long skuId, int page, int pageSize) {
         assertSkuScope(skuId);
-        List<Map<String, Object>> items = priceHistoryRepository.findBySkuIdOrderByIdDesc(skuId).stream()
-            .map(history -> Map.<String, Object>of(
-                "changeType", history.getChangeType(),
-                "oldPrice", normalizeJson(history.getOldPriceJson()),
-                "newPrice", normalizeJson(history.getNewPriceJson()),
-                "reason", history.getReason() == null ? "" : history.getReason(),
-                "operatorId", history.getOperatorId() == null ? 0L : history.getOperatorId(),
-                "createdAt", history.getCreatedAt() == null ? "" : history.getCreatedAt().toString()
+        int safePage = Math.max(page, 1);
+        int safePageSize = Math.min(Math.max(pageSize, 1), 100);
+        var pageable = PageRequest.of(
+            safePage - 1,
+            safePageSize,
+            Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+        );
+        var pageResult = priceHistoryRepository.findBySkuId(skuId, pageable);
+        var items = pageResult.getContent().stream()
+            .map(history -> new PriceHistoryResponse.Item(
+                history.getChangeType(),
+                parsePriceSnapshot(history.getOldPriceJson()),
+                parsePriceSnapshot(history.getNewPriceJson()),
+                history.getReason(),
+                history.getOperatorId(),
+                history.getCreatedAt()
             ))
             .toList();
-        return Map.of("items", items);
+        return new PriceHistoryResponse(items, safePage, safePageSize, pageResult.getTotalElements());
     }
 
     @Transactional
@@ -155,14 +165,21 @@ public class PricingService {
         var sku = productSkuRepository.findById(skuId)
             .orElseThrow(() -> new BusinessException(ErrorCode.PRODUCT_NOT_FOUND, "sku not found"));
         var currentPrice = priceCurrentRepository.findById(skuId).orElse(null);
+        String oldPriceJson = currentPrice == null
+            ? "{}"
+            : PriceHistoryEntity.priceJson(currentPrice.getListPrice(), currentPrice.getSalePrice());
 
-        priceCurrentRepository.save(PriceCurrentEntity.of(skuId, sku.getMerchantId(), listPrice, salePrice));
+        if (currentPrice == null) {
+            priceCurrentRepository.save(PriceCurrentEntity.of(skuId, sku.getMerchantId(), listPrice, salePrice));
+        } else {
+            currentPrice.updatePrices(listPrice, salePrice);
+        }
 
         PriceHistoryEntity history = "scheduled".equals(changeType)
             ? PriceHistoryEntity.scheduled(
                 skuId,
                 sku.getMerchantId(),
-                currentPrice == null ? "{}" : PriceHistoryEntity.priceJson(currentPrice.getListPrice(), currentPrice.getSalePrice()),
+                oldPriceJson,
                 listPrice,
                 salePrice,
                 reason,
@@ -171,7 +188,7 @@ public class PricingService {
             : PriceHistoryEntity.manual(
                 skuId,
                 sku.getMerchantId(),
-                currentPrice == null ? "{}" : PriceHistoryEntity.priceJson(currentPrice.getListPrice(), currentPrice.getSalePrice()),
+                oldPriceJson,
                 listPrice,
                 salePrice,
                 reason,
@@ -179,6 +196,17 @@ public class PricingService {
             );
         priceHistoryRepository.save(history);
         refreshProjectionBySku(skuId);
+    }
+
+    private PriceHistoryResponse.PriceSnapshot parsePriceSnapshot(String rawJson) {
+        JsonNode node = parseJson(rawJson);
+        if (!node.hasNonNull("listPrice") && !node.hasNonNull("salePrice")) {
+            return null;
+        }
+        return new PriceHistoryResponse.PriceSnapshot(
+            node.path("listPrice").decimalValue(),
+            node.path("salePrice").decimalValue()
+        );
     }
 
     private void validatePrice(BigDecimal listPrice, BigDecimal salePrice) {

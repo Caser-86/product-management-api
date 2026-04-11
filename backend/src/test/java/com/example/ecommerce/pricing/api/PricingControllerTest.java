@@ -73,22 +73,16 @@ class PricingControllerTest {
 
     @Test
     void updates_price_and_records_history() throws Exception {
-        mockMvc.perform(withBearer(patch("/admin/skus/{skuId}/prices", skuId), platformAdminToken(9001L, 2001L))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                    {
-                      "listPrice": 189.00,
-                      "salePrice": 149.00,
-                      "reason": "weekend campaign",
-                      "operatorId": 501
-                    }
-                    """))
-            .andExpect(status().isOk());
+        updatePrice(skuId, 189.00, 149.00, "weekend campaign", 501L);
 
         mockMvc.perform(withBearer(get("/admin/skus/{skuId}/price-history", skuId), platformAdminToken(9001L, 2001L)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items[0].reason").value("weekend campaign"))
-            .andExpect(jsonPath("$.data.items[0].newPrice").value("{\"listPrice\":189.00,\"salePrice\":149.00}"));
+            .andExpect(jsonPath("$.data.page").value(1))
+            .andExpect(jsonPath("$.data.pageSize").value(20))
+            .andExpect(jsonPath("$.data.total").value(1))
+            .andExpect(jsonPath("$.data.items[0].newPrice.listPrice").value(189.00))
+            .andExpect(jsonPath("$.data.items[0].newPrice.salePrice").value(149.00));
     }
 
     @Test
@@ -120,7 +114,9 @@ class PricingControllerTest {
         mockMvc.perform(withBearer(get("/admin/skus/{skuId}/price-history", skuId), platformAdminToken(9001L, 2001L)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.items[0].changeType").value("scheduled"))
-            .andExpect(jsonPath("$.data.items[0].reason").value("scheduled release"));
+            .andExpect(jsonPath("$.data.items[0].reason").value("scheduled release"))
+            .andExpect(jsonPath("$.data.items[0].newPrice.listPrice").value(299.00))
+            .andExpect(jsonPath("$.data.items[0].newPrice.salePrice").value(239.00));
     }
 
     @Test
@@ -143,6 +139,58 @@ class PricingControllerTest {
             .andExpect(jsonPath("$.code").value("AUTH_MERCHANT_SCOPE_DENIED"));
     }
 
+    @Test
+    void price_history_returns_typed_price_snapshots() throws Exception {
+        updatePrice(skuId, 189.00, 149.00, "launch price", 501L);
+        updatePrice(skuId, 199.00, 159.00, "raise price", 502L);
+
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/price-history", skuId), platformAdminToken(9001L, 2001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.items[0].changeType").value("manual"))
+            .andExpect(jsonPath("$.data.items[0].newPrice.listPrice").value(199.00))
+            .andExpect(jsonPath("$.data.items[0].newPrice.salePrice").value(159.00))
+            .andExpect(jsonPath("$.data.items[0].oldPrice.listPrice").value(189.00))
+            .andExpect(jsonPath("$.data.items[0].oldPrice.salePrice").value(149.00));
+    }
+
+    @Test
+    void price_history_supports_pagination() throws Exception {
+        updatePrice(skuId, 100.00, 90.00, "price-1", 501L);
+        updatePrice(skuId, 110.00, 95.00, "price-2", 502L);
+        updatePrice(skuId, 120.00, 99.00, "price-3", 503L);
+
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/price-history", skuId)
+                .param("page", "2")
+                .param("pageSize", "1"), platformAdminToken(9001L, 2001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.page").value(2))
+            .andExpect(jsonPath("$.data.pageSize").value(1))
+            .andExpect(jsonPath("$.data.total").value(3))
+            .andExpect(jsonPath("$.data.items.length()").value(1))
+            .andExpect(jsonPath("$.data.items[0].reason").value("price-2"));
+    }
+
+    @Test
+    void price_history_clamps_page_size_to_maximum() throws Exception {
+        updatePrice(skuId, 100.00, 90.00, "price-1", 501L);
+
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/price-history", skuId)
+                .param("pageSize", "999"), platformAdminToken(9001L, 2001L)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.pageSize").value(100));
+    }
+
+    @Test
+    void merchant_admin_cannot_read_price_history_for_other_merchant_sku() throws Exception {
+        ProductSpuEntity foreignSpu = ProductSpuEntity.draft(4001L, "SPU-PRC-HISTORY-2", "pricing-foreign", 44L);
+        foreignSpu.addSku(ProductSkuEntity.of(4001L, "SKU-PRC-HISTORY-2", "{\"color\":\"white\"}", "pricing-hash-history-2"));
+        Long foreignSkuId = productSpuRepository.save(foreignSpu).getSkus().get(0).getId();
+
+        mockMvc.perform(withBearer(get("/admin/skus/{skuId}/price-history", foreignSkuId), merchantAdminToken(9002L, 2001L)))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.code").value("AUTH_MERCHANT_SCOPE_DENIED"));
+    }
+
     private String platformAdminToken(long userId, long merchantId) {
         return authTestTokens.platformAdminToken(userId, merchantId);
     }
@@ -153,5 +201,19 @@ class PricingControllerTest {
 
     private MockHttpServletRequestBuilder withBearer(MockHttpServletRequestBuilder requestBuilder, String token) {
         return requestBuilder.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+    }
+
+    private void updatePrice(Long skuId, double listPrice, double salePrice, String reason, long operatorId) throws Exception {
+        mockMvc.perform(withBearer(patch("/admin/skus/{skuId}/prices", skuId), platformAdminToken(9001L, 2001L))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {
+                      "listPrice": %.2f,
+                      "salePrice": %.2f,
+                      "reason": "%s",
+                      "operatorId": %d
+                    }
+                    """.formatted(listPrice, salePrice, reason, operatorId)))
+            .andExpect(status().isOk());
     }
 }

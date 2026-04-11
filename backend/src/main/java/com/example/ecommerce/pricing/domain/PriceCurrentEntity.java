@@ -48,6 +48,11 @@ public class PriceCurrentEntity {
         return entity;
     }
 
+    public void updatePrices(BigDecimal listPrice, BigDecimal salePrice) {
+        this.listPrice = listPrice;
+        this.salePrice = salePrice;
+    }
+
     public Long getMerchantId() {
         return merchantId;
     }
