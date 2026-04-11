@@ -19,6 +19,7 @@ import com.example.ecommerce.shared.api.ErrorCode;
 import com.example.ecommerce.shared.auth.AuthContext;
 import com.example.ecommerce.shared.auth.AuthContextHolder;
 import com.example.ecommerce.shared.auth.AuthRole;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -124,14 +125,31 @@ public class ProductCommandService {
     }
 
     @Transactional(readOnly = true)
-    public ProductListResponse list(Long merchantId, int page, int pageSize) {
+    public ProductListResponse list(
+        Long merchantId,
+        String status,
+        String auditStatus,
+        String publishStatus,
+        String keyword,
+        String sort,
+        int page,
+        int pageSize
+    ) {
         int safePage = Math.max(page, 1);
         int safePageSize = Math.max(pageSize, 1);
         Long effectiveMerchantId = effectiveMerchantId(merchantId, false);
-        var pageable = org.springframework.data.domain.PageRequest.of(safePage - 1, safePageSize);
-        var pageResult = effectiveMerchantId == null
-            ? spuRepository.findByStatusNot("deleted", pageable)
-            : spuRepository.findByMerchantIdAndStatusNot(effectiveMerchantId, "deleted", pageable);
+        validateListFilters(status, auditStatus, publishStatus);
+        AdminProductListSort adminProductListSort = AdminProductListSort.parse(sort);
+        var pageable = PageRequest.of(safePage - 1, safePageSize);
+        var pageResult = spuRepository.searchAdminProducts(
+            effectiveMerchantId,
+            normalize(status),
+            normalize(auditStatus),
+            normalize(publishStatus),
+            normalize(keyword),
+            adminProductListSort,
+            pageable
+        );
         var items = pageResult.getContent().stream()
             .map(this::toProductResponse)
             .toList();
@@ -315,5 +333,30 @@ public class ProductCommandService {
             return null;
         }
         return request.comment();
+    }
+
+    private void validateListFilters(String status, String auditStatus, String publishStatus) {
+        if (status != null && !status.isBlank() && !"draft".equals(status) && !"active".equals(status)) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "unsupported product status");
+        }
+        if (auditStatus != null && !auditStatus.isBlank()
+            && !"pending".equals(auditStatus)
+            && !"approved".equals(auditStatus)
+            && !"rejected".equals(auditStatus)) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "unsupported audit status");
+        }
+        if (publishStatus != null && !publishStatus.isBlank()
+            && !"published".equals(publishStatus)
+            && !"unpublished".equals(publishStatus)) {
+            throw new BusinessException(ErrorCode.COMMON_VALIDATION_FAILED, "unsupported publish status");
+        }
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

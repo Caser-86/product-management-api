@@ -237,6 +237,20 @@ Workflow behavior:
   `draft` + `pending` + `unpublished` and must be reviewed again
 - Workflow actions are recorded in `product_workflow_history`
 
+Admin product listing supports workflow-oriented query parameters:
+
+- `status`
+- `auditStatus`
+- `publishStatus`
+- `keyword`
+- `sort`
+
+Supported admin list sort values:
+
+- `created_desc`
+- `title_asc`
+- `title_desc`
+
 ## API Documentation
 
 After the application starts, interactive API docs are available at:
